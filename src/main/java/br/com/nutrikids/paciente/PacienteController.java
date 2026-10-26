@@ -2,96 +2,62 @@ package br.com.nutrikids.paciente;
 
 import br.com.nutrikids.auditoria.*;
 import br.com.nutrikids.auth.*;
+import br.com.nutrikids.paciente.PacienteService.*;
 import br.com.nutrikids.responsavel.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.*;
 import jakarta.validation.constraints.*;
 import java.time.*;
 import java.util.*;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Tag(name = "paciente")
 @RequestMapping("/api/pacientes")
 public class PacienteController {
-  private final PacienteRepository repo;
-  private final AcessoPaciente acesso;
-  private final VinculoRepository vinculos;
-  private final Auditoria audit;
+  private final PacienteService service;
 
-  public PacienteController(
-      PacienteRepository r, AcessoPaciente a, VinculoRepository v, Auditoria au) {
-    repo = r;
-    acesso = a;
-    vinculos = v;
-    audit = au;
+  public PacienteController(PacienteService service) {
+    this.service = service;
   }
 
-  record Vista(
-      UUID id, String nome, LocalDate nascimento, String sexo, String observacoes, long versao) {}
-
-  private Vista vista(Paciente p) {
-    return new Vista(
-        p.id,
-        p.nome,
-        p.nascimento,
-        p.sexo,
-        Identidade.atual().familia() ? null : p.observacoes,
-        p.versao);
-  }
-
-  record Dados(
-      @NotBlank @Size(max = 150) String nome,
-      @NotNull @PastOrPresent LocalDate nascimento,
-      @Pattern(regexp = "F|M|NAO_INFORMADO") @NotNull String sexo,
-      @Size(max = 4000) String observacoes) {}
-
+  @Operation(
+      summary = "Listar pacientes autorizados",
+      description =
+          "Filtro nome sem distinção de maiúsculas. Responsável só vê vínculos e nunca observações"
+              + " privadas. Paginação no banco antes de serializar.")
   @GetMapping
-  List<Vista> listar() {
-    var i = Identidade.atual();
-    var all = repo.findByClinicaIdOrderByNome(i.clinicaId());
-    if (!i.familia()) return all.stream().map(this::vista).toList();
-    var ids =
-        vinculos.findByUsuarioIdAndClinicaId(i.id(), i.clinicaId()).stream()
-            .map(v -> v.pacienteId)
-            .toList();
-    return all.stream().filter(p -> ids.contains(p.id)).map(this::vista).toList();
+  public List<Vista> listar(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size,
+      @RequestParam(defaultValue = "") String nome) {
+    return service.listar(page, size, nome);
   }
 
+  @Operation(
+      summary = "Cadastrar paciente",
+      description = "ADMIN ou NUTRICIONISTA da clínica autenticada.")
   @PostMapping
   @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-  @Transactional
-  Paciente criar(@Valid @RequestBody Dados d) {
-    AcessoPaciente.profissional();
-    var p = new Paciente();
-    p.id = UUID.randomUUID();
-    p.clinicaId = Identidade.atual().clinicaId();
-    p.nome = d.nome();
-    p.nascimento = d.nascimento();
-    p.sexo = d.sexo();
-    p.observacoes = d.observacoes();
-    p.criadoEm = Instant.now();
-    repo.save(p);
-    audit.registrar("PACIENTE_CRIADO", p.id);
-    return p;
+  public Vista criar(@Valid @RequestBody Dados d) {
+    return service.criar(d);
   }
 
+  @Operation(
+      summary = "Consultar paciente",
+      description =
+          "Clínica da sessão; responsável requer vínculo. 404 oculta recursos fora do escopo.")
   @GetMapping("/{id}")
-  Vista obter(@PathVariable UUID id) {
-    var p = acesso.obter(id);
-    audit.registrar("PACIENTE_LIDO", id);
-    return vista(p);
+  public Vista obter(@PathVariable UUID id) {
+    return service.obter(id);
   }
 
+  @Operation(
+      summary = "Atualizar paciente",
+      description = "ADMIN ou NUTRICIONISTA; controle otimista de versão no banco.")
   @PutMapping("/{id}")
-  @Transactional
-  Paciente editar(@PathVariable UUID id, @Valid @RequestBody Dados d) {
-    AcessoPaciente.profissional();
-    var p = acesso.obter(id);
-    p.nome = d.nome();
-    p.nascimento = d.nascimento();
-    p.sexo = d.sexo();
-    p.observacoes = d.observacoes();
-    audit.registrar("PACIENTE_EDITADO", id);
-    return repo.save(p);
+  public Vista editar(@PathVariable UUID id, @Valid @RequestBody Dados d) {
+    return service.editar(id, d);
   }
 }

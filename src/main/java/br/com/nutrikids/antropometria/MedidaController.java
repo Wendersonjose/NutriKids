@@ -1,64 +1,49 @@
 package br.com.nutrikids.antropometria;
 
+import br.com.nutrikids.antropometria.MedidaService.*;
 import br.com.nutrikids.auditoria.*;
 import br.com.nutrikids.auth.*;
 import br.com.nutrikids.paciente.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.*;
 import jakarta.validation.constraints.*;
 import java.math.*;
 import java.time.*;
 import java.util.*;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Tag(name = "antropometria")
 @RequestMapping("/api/pacientes/{pacienteId}/medidas")
 public class MedidaController {
-  private final MedidaRepository repo;
-  private final AcessoPaciente acesso;
-  private final Auditoria audit;
+  private final MedidaService service;
 
-  public MedidaController(MedidaRepository r, AcessoPaciente a, Auditoria au) {
-    repo = r;
-    acesso = a;
-    audit = au;
+  public MedidaController(MedidaService service) {
+    this.service = service;
   }
 
-  record Dados(
-      @NotNull @PastOrPresent LocalDate data,
-      @NotNull @DecimalMin("0.1") @DecimalMax("400") BigDecimal pesoKg,
-      @NotNull @DecimalMin("20") @DecimalMax("250") BigDecimal alturaCm,
-      @NotNull @Pattern(regexp = "DEITADO|EM_PE") String posicao) {}
-
+  @Operation(
+      summary = "Listar medidas",
+      description =
+          "Paciente autorizado. Lista paginada por data e id. Sem interpretação clínica"
+              + " automática.")
   @GetMapping
-  List<Medida> listar(@PathVariable UUID pacienteId) {
-    acesso.obter(pacienteId);
-    audit.registrar("MEDIDAS_LIDAS", pacienteId);
-    return repo.findByPacienteIdAndClinicaIdOrderByDataAsc(
-        pacienteId, Identidade.atual().clinicaId());
+  public List<Vista> listar(
+      @PathVariable UUID pacienteId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size) {
+    return service.listar(pacienteId, page, size);
   }
 
+  @Operation(
+      summary = "Registrar medida",
+      description =
+          "Equipe clínica. Data entre nascimento e hoje, peso 0.1..400 kg, altura 20..250 cm,"
+              + " posição DEITADO ou EM_PE.")
   @PostMapping
-  @Transactional
   @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-  Medida criar(@PathVariable UUID pacienteId, @Valid @RequestBody Dados d) {
-    AcessoPaciente.profissional();
-    var p = acesso.obter(pacienteId);
-    if (d.data().isBefore(p.nascimento))
-      throw new org.springframework.web.server.ResponseStatusException(
-          org.springframework.http.HttpStatus.BAD_REQUEST, "Medida anterior ao nascimento");
-    var i = Identidade.atual();
-    var m = new Medida();
-    m.id = UUID.randomUUID();
-    m.clinicaId = i.clinicaId();
-    m.pacienteId = pacienteId;
-    m.autorId = i.id();
-    m.data = d.data();
-    m.pesoKg = d.pesoKg();
-    m.alturaCm = d.alturaCm();
-    m.posicao = d.posicao();
-    repo.save(m);
-    audit.registrar("MEDIDA_CRIADA", m.id);
-    return m;
+  public Vista criar(@PathVariable UUID pacienteId, @Valid @RequestBody Dados d) {
+    return service.criar(pacienteId, d);
   }
 }

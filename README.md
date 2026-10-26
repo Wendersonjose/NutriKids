@@ -74,3 +74,11 @@ Todo POST/PUT/PATCH e logout requer `X-XSRF-TOKEN`, obtido em `/api/auth/csrf`, 
 Backend: https://github.com/Wendersonjose/NutriKids. Este repositório contém pom.xml e src/ na raiz, documentação, scripts e CI do backend. O frontend React é mantido separadamente.
 
 Nenhum projeto anterior de nutrição foi alterado. Consulte o histórico Git e o resultado final da publicação informado na entrega.
+
+## Swagger em desenvolvimento
+
+Com DB_URL/DB_USERNAME/DB_PASSWORD configurados, execute `mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
+Acesse http://localhost:8080/swagger-ui/index.html. JSON: http://localhost:8080/v3/api-docs.
+Documentação desabilitada/bloqueada nos demais perfis; `prod` prevalece sobre a liberação de `dev`.
+Contrato: [docs/openapi.yaml](docs/openapi.yaml). [Uso, sessão, CSRF e paginação](docs/swagger.md).
+Consulte também [auditoria e validações](docs/auditoria-2026-10-26.md).

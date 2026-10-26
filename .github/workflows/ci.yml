@@ -4,7 +4,7 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -12,4 +12,21 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - run: mvn -B verify
+      - name: PostgreSQL isolado, sem Docker
+        run: |
+          sudo systemctl start postgresql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE USER nutrikids_test WITH PASSWORD 'sintetica-ci-descartavel';"
+          sudo -u postgres createdb --owner=nutrikids_test nutrikids_auditoria_test
+      - name: Verify com Flyway e concorrência PostgreSQL
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/nutrikids_auditoria_test
+          TEST_DB_USERNAME: nutrikids_test
+          TEST_DB_PASSWORD: sintetica-ci-descartavel
+        run: mvn -B verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verificacao-backend
+          path: |
+            target/surefire-reports/
+            target/openapi.yaml

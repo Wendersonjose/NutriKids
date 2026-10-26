@@ -1,0 +1,2071 @@
+openapi: 3.1.0
+info:
+  title: NutriKids API
+  description: "Desenvolvimento com dados sintéticos. Autenticação por sessão JSESSIONID\
+    \ (HttpOnly), sem JWT. 1. GET /api/auth/csrf obtém cookie XSRF-TOKEN e token.\
+    \ 2. POST /api/auth/login com email/senha e header X-XSRF-TOKEN. 3. Após login\
+    \ obtenha novamente /csrf. Envie o token em POST, PUT, PATCH e logout. Swagger\
+    \ usa cookies da mesma origem; não preencha JSESSIONID manualmente. Logout POST\
+    \ /api/auth/logout invalida a sessão. 401: sessão ausente/inválida; 403: CSRF\
+    \ ou perfil. A clínica vem da sessão. Responsáveis só acessam pacientes vinculados\
+    \ e conteúdo compartilhado. Recursos inacessíveis retornam 404. Listagens: page\
+    \ começa em zero, size de 1 a 100 (padrão 50); resposta permanece array. Nunca\
+    \ inserir dados reais neste ambiente."
+  version: 0.1.0
+servers:
+- url: http://localhost
+  description: Generated server url
+security:
+- sessao: []
+paths:
+  /api/pacientes/{id}:
+    get:
+      tags:
+      - paciente
+      summary: Consultar paciente
+      description: Clínica da sessão; responsável requer vínculo. 404 oculta recursos
+        fora do escopo.
+      operationId: obter
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PacienteVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    put:
+      tags:
+      - paciente
+      summary: Atualizar paciente
+      description: ADMIN ou NUTRICIONISTA; controle otimista de versão no banco.
+      operationId: editar
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PacienteDados"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PacienteVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/clinica:
+    get:
+      tags:
+      - usuario
+      summary: Consultar clínica
+      description: Equipe clínica; clínica derivada da sessão.
+      operationId: clinica
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EquipeVistaClinica"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    put:
+      tags:
+      - usuario
+      summary: Renomear clínica
+      description: Apenas ADMIN.
+      operationId: editar_1
+      parameters:
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipeNome"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EquipeVistaClinica"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes:
+    get:
+      tags:
+      - paciente
+      summary: Listar pacientes autorizados
+      description: Filtro nome sem distinção de maiúsculas. Responsável só vê vínculos
+        e nunca observações privadas. Paginação no banco antes de serializar.
+      operationId: listar
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      - name: nome
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ""
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PacienteVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - paciente
+      summary: Cadastrar paciente
+      description: ADMIN ou NUTRICIONISTA da clínica autenticada.
+      operationId: criar
+      parameters:
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PacienteDados"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PacienteVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes/{pacienteId}/registros:
+    get:
+      tags:
+      - prontuario
+      summary: Listar registros clínicos
+      description: Paciente autorizado; família vê somente compartilhados. Lista paginada
+        por criação e id.
+      operationId: listar_1
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RegistroVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - prontuario
+      summary: Acrescentar registro
+      description: Equipe pode registrar tipos permitidos. Responsável só cria DIARIO_ALIMENTAR
+        ou MENSAGEM e sempre compartilhado. Sem edição/exclusão.
+      operationId: criar_1
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistroDados"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RegistroVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes/{pacienteId}/medidas:
+    get:
+      tags:
+      - antropometria
+      summary: Listar medidas
+      description: Paciente autorizado. Lista paginada por data e id. Sem interpretação
+        clínica automática.
+      operationId: listar_2
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedidaVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - antropometria
+      summary: Registrar medida
+      description: "Equipe clínica. Data entre nascimento e hoje, peso 0.1..400 kg,\
+        \ altura 20..250 cm, posição DEITADO ou EM_PE."
+      operationId: criar_2
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MedidaDados"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MedidaVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes/{pacienteId}/anexos:
+    get:
+      tags:
+      - prontuario
+      summary: Listar metadados de anexos
+      description: Paciente autorizado; responsável vê somente compartilhados; conteúdo
+        binário não é serializado.
+      operationId: listar_3
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnexoVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - prontuario
+      summary: Enviar anexo protegido
+      description: "multipart/form-data; título até 150 caracteres, limite total 5\
+        \ MB; assinatura PDF/PNG/JPEG. Família só envia para paciente vinculado e\
+        \ força compartilhamento. Não substitui antimalware."
+      operationId: enviar
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: compartilhado
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: titulo
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+              required:
+              - arquivo
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AnexoVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes/{id}/responsaveis:
+    post:
+      tags:
+      - usuario
+      summary: Vincular responsável
+      description: Apenas ADMIN; usuário RESPONSAVEL e paciente devem pertencer à
+        clínica da sessão.
+      operationId: vincular
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipeVincular"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/equipe:
+    get:
+      tags:
+      - usuario
+      summary: Listar equipe
+      description: ADMIN ou NUTRICIONISTA. Nunca retorna hash de senha.
+      operationId: listar_4
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EquipeVistaUsuario"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - usuario
+      summary: Criar usuário
+      description: "Apenas ADMIN. Senha de 12 caracteres no mínimo e até 72 bytes\
+        \ UTF-8; perfis ADMIN, NUTRICIONISTA, RESPONSAVEL."
+      operationId: criar_3
+      parameters:
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipeDados"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EquipeVistaUsuario"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/auth/login:
+    post:
+      tags:
+      - auth
+      summary: Autenticar por sessão
+      description: Público com CSRF. Credenciais sintéticas; renova sessão para impedir
+        fixação. Limite local 15 tentativas em 15 minutos.
+      operationId: login
+      parameters:
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLogin"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/br.com.nutrikids.auth.Identidade"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - csrf: []
+  /api/agenda:
+    get:
+      tags:
+      - agenda
+      summary: Listar agenda
+      description: Equipe clínica. Filtros profissionalId e início inclusivo/fim exclusivo
+        por início da consulta. page/size limitam resultados.
+      operationId: listar_5
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      - name: profissionalId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: inicio
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: fim
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgendaVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+    post:
+      tags:
+      - agenda
+      summary: Agendar consulta
+      description: "Equipe clínica. Paciente e profissional da mesma clínica. Intervalo\
+        \ positivo até 8 horas exatas. Sobreposição de paciente ou profissional retorna\
+        \ 409 no PostgreSQL, inclusive concorrente."
+      operationId: criar_4
+      parameters:
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaDados"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendaVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/agenda/{id}:
+    patch:
+      tags:
+      - agenda
+      summary: Encerrar consulta
+      description: Equipe clínica; transição de AGENDADA para CANCELADA ou CONCLUIDA.
+        Repetição/concorrência retorna 409.
+      operationId: estado
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-XSRF-TOKEN
+        in: header
+        description: Token de /api/auth/csrf; renovar após login.
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaEstado"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendaVista"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+        csrf: []
+  /api/pacientes/{pacienteId}/anexos/{id}:
+    get:
+      tags:
+      - prontuario
+      summary: Baixar anexo
+      description: "Escopo clínica, paciente e compartilhamento. Resposta binária\
+        \ attachment com nosniff e sem cache."
+      operationId: baixar
+      parameters:
+      - name: pacienteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Arquivo autorizado
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+  /api/pacientes/{id}/relatorio.pdf:
+    get:
+      tags:
+      - prontuario
+      summary: Exportar relatório PDF
+      description: "Paciente autorizado. Família recebe somente registros compartilhados.\
+        \ Arquivo de acompanhamento, não laudo automático. Exportação auditada."
+      operationId: pdf
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+  /api/dashboard:
+    get:
+      tags:
+      - paciente
+      summary: Consultar indicadores
+      description: Equipe vê sua clínica; família vê vínculos e contagem de registros
+        compartilhados. Sem conteúdo clínico nos indicadores.
+      operationId: dados
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int64
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+  /api/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Consultar identidade autenticada
+      description: Retorna somente identidade da sessão atual.
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/br.com.nutrikids.auth.Identidade"
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security:
+      - sessao: []
+  /api/auth/csrf:
+    get:
+      tags:
+      - auth
+      summary: Obter token CSRF
+      description: Público. Cria cookie XSRF-TOKEN; enviar token no header X-XSRF-TOKEN
+        nas mutações.
+      operationId: csrf
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        "400":
+          description: Entrada inválida; não inclui valores rejeitados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "401":
+          description: Sessão ausente/inválida ou credenciais incorretas.
+        "403":
+          description: Perfil sem permissão ou token CSRF ausente/inválido.
+        "404":
+          description: Recurso não encontrado no escopo autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "409":
+          description: "Conflito de integridade, versão concorrente ou agenda."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "413":
+          description: Upload excede limite de 5 MB por requisição.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+        "429":
+          description: Limite de tentativas de login atingido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroApi"
+      security: []
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Encerrar sessão
+      description: Invalida sessão e limpa contexto autenticado. Exige CSRF.
+      operationId: logout
+      responses:
+        "204":
+          description: Sessão encerrada.
+        "403":
+          description: CSRF ausente/inválido.
+      security:
+      - sessao: []
+        csrf: []
+components:
+  schemas:
+    PacienteDados:
+      type: object
+      description: Contrato Paciente Dados. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        nome:
+          type: string
+          description: Campo nome do contrato PacienteDados.
+          example: Pessoa Sintética
+          maxLength: 150
+          minLength: 0
+        nascimento:
+          type: string
+          format: date
+          description: Campo nascimento do contrato PacienteDados.
+          example: 2020-01-01
+        sexo:
+          type: string
+          description: Campo sexo do contrato PacienteDados.
+          example: F
+          pattern: F|M|NAO_INFORMADO
+        observacoes:
+          type: string
+          description: Campo observacoes do contrato PacienteDados.
+          example: Exemplo fictício para documentação
+          maxLength: 4000
+          minLength: 0
+      required:
+      - nascimento
+      - nome
+      - sexo
+    PacienteVista:
+      type: object
+      description: Contrato Paciente Vista. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato PacienteVista.
+        nome:
+          type: string
+          description: Campo nome do contrato PacienteVista.
+          example: Pessoa Sintética
+        nascimento:
+          type: string
+          format: date
+          description: Campo nascimento do contrato PacienteVista.
+          example: 2020-01-01
+        sexo:
+          type: string
+          description: Campo sexo do contrato PacienteVista.
+          example: F
+        observacoes:
+          type: string
+          description: Campo observacoes do contrato PacienteVista.
+          example: Exemplo fictício para documentação
+        versao:
+          type: integer
+          format: int64
+          description: Campo versao do contrato PacienteVista.
+    EquipeNome:
+      type: object
+      description: Contrato Equipe Nome. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        nome:
+          type: string
+          description: Campo nome do contrato EquipeNome.
+          example: Pessoa Sintética
+          maxLength: 150
+          minLength: 0
+      required:
+      - nome
+    EquipeVistaClinica:
+      type: object
+      description: Contrato Equipe VistaClinica. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato EquipeVistaClinica.
+        nome:
+          type: string
+          description: Campo nome do contrato EquipeVistaClinica.
+          example: Pessoa Sintética
+    RegistroDados:
+      type: object
+      description: Contrato Registro Dados. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        tipo:
+          type: string
+          description: Campo tipo do contrato RegistroDados.
+          example: DIARIO_ALIMENTAR
+          pattern: PRONTUARIO|ANAMNESE|PLANO_ALIMENTAR|DIARIO_ALIMENTAR|TERAPIA_ALIMENTAR|MENSAGEM|META
+        conteudo:
+          type: string
+          description: Campo conteudo do contrato RegistroDados.
+          example: Orientação exclusivamente sintética
+          maxLength: 12000
+          minLength: 0
+        compartilhado:
+          type: boolean
+          description: Campo compartilhado do contrato RegistroDados.
+      required:
+      - conteudo
+      - tipo
+    RegistroVista:
+      type: object
+      description: Contrato Registro Vista. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato RegistroVista.
+        pacienteId:
+          type: string
+          format: uuid
+          description: Campo pacienteId do contrato RegistroVista.
+        autorId:
+          type: string
+          format: uuid
+          description: Campo autorId do contrato RegistroVista.
+        tipo:
+          type: string
+          description: Campo tipo do contrato RegistroVista.
+          example: DIARIO_ALIMENTAR
+        conteudo:
+          type: string
+          description: Campo conteudo do contrato RegistroVista.
+          example: Orientação exclusivamente sintética
+        compartilhado:
+          type: boolean
+          description: Campo compartilhado do contrato RegistroVista.
+        criadoEm:
+          type: string
+          format: date-time
+          description: Campo criadoEm do contrato RegistroVista.
+    MedidaDados:
+      type: object
+      description: Contrato Medida Dados. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        data:
+          type: string
+          format: date
+          description: Campo data do contrato MedidaDados.
+        pesoKg:
+          type: number
+          description: Campo pesoKg do contrato MedidaDados.
+          example: 20
+          maximum: 400
+          minimum: 0.1
+        alturaCm:
+          type: number
+          description: Campo alturaCm do contrato MedidaDados.
+          example: 110
+          maximum: 250
+          minimum: 20
+        posicao:
+          type: string
+          description: Campo posicao do contrato MedidaDados.
+          example: EM_PE
+          pattern: DEITADO|EM_PE
+      required:
+      - alturaCm
+      - data
+      - pesoKg
+      - posicao
+    MedidaVista:
+      type: object
+      description: Contrato Medida Vista. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato MedidaVista.
+        pacienteId:
+          type: string
+          format: uuid
+          description: Campo pacienteId do contrato MedidaVista.
+        autorId:
+          type: string
+          format: uuid
+          description: Campo autorId do contrato MedidaVista.
+        data:
+          type: string
+          format: date
+          description: Campo data do contrato MedidaVista.
+        pesoKg:
+          type: number
+          description: Campo pesoKg do contrato MedidaVista.
+          example: 20
+        alturaCm:
+          type: number
+          description: Campo alturaCm do contrato MedidaVista.
+          example: 110
+        posicao:
+          type: string
+          description: Campo posicao do contrato MedidaVista.
+          example: EM_PE
+    AnexoVista:
+      type: object
+      description: Contrato Anexo Vista. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato AnexoVista.
+        pacienteId:
+          type: string
+          format: uuid
+          description: Campo pacienteId do contrato AnexoVista.
+        autorId:
+          type: string
+          format: uuid
+          description: Campo autorId do contrato AnexoVista.
+        titulo:
+          type: string
+          description: Campo titulo do contrato AnexoVista.
+          example: Arquivo sintético
+        mime:
+          type: string
+          description: Campo mime do contrato AnexoVista.
+        compartilhado:
+          type: boolean
+          description: Campo compartilhado do contrato AnexoVista.
+        criadoEm:
+          type: string
+          format: date-time
+          description: Campo criadoEm do contrato AnexoVista.
+    EquipeVincular:
+      type: object
+      description: Contrato Equipe Vincular. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        usuarioId:
+          type: string
+          format: uuid
+          description: Campo usuarioId do contrato EquipeVincular.
+        parentesco:
+          type: string
+          description: Campo parentesco do contrato EquipeVincular.
+          maxLength: 60
+          minLength: 0
+      required:
+      - parentesco
+      - usuarioId
+    EquipeDados:
+      type: object
+      description: Contrato Equipe Dados. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        nome:
+          type: string
+          description: Campo nome do contrato EquipeDados.
+          example: Pessoa Sintética
+          maxLength: 150
+          minLength: 0
+        email:
+          type: string
+          format: email
+          description: Campo email do contrato EquipeDados.
+          example: pessoa@test.invalid
+          minLength: 1
+        senha:
+          type: string
+          description: Campo senha do contrato EquipeDados.
+          example: SenhaSintetica123!
+          maxLength: 72
+          minLength: 12
+          writeOnly: true
+        perfil:
+          type: string
+          description: Campo perfil do contrato EquipeDados.
+          example: RESPONSAVEL
+          pattern: ADMIN|NUTRICIONISTA|RESPONSAVEL
+        crn:
+          type: string
+          description: Campo crn do contrato EquipeDados.
+          maxLength: 30
+          minLength: 0
+      required:
+      - email
+      - nome
+      - perfil
+      - senha
+    EquipeVistaUsuario:
+      type: object
+      description: Contrato Equipe VistaUsuario. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato EquipeVistaUsuario.
+        nome:
+          type: string
+          description: Campo nome do contrato EquipeVistaUsuario.
+          example: Pessoa Sintética
+        email:
+          type: string
+          description: Campo email do contrato EquipeVistaUsuario.
+          example: pessoa@test.invalid
+        perfil:
+          type: string
+          description: Campo perfil do contrato EquipeVistaUsuario.
+          example: RESPONSAVEL
+        crn:
+          type: string
+          description: Campo crn do contrato EquipeVistaUsuario.
+    AuthLogin:
+      type: object
+      description: Contrato Auth Login. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        email:
+          type: string
+          format: email
+          description: Campo email do contrato AuthLogin.
+          example: pessoa@test.invalid
+          minLength: 1
+        senha:
+          type: string
+          description: Campo senha do contrato AuthLogin.
+          example: SenhaSintetica123!
+          maxLength: 72
+          minLength: 0
+          writeOnly: true
+      required:
+      - email
+      - senha
+    br.com.nutrikids.auth.Identidade:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato br.com.nutrikids.auth.Identidade.
+        clinicaId:
+          type: string
+          format: uuid
+          description: Campo clinicaId do contrato br.com.nutrikids.auth.Identidade.
+        perfil:
+          type: string
+          description: Campo perfil do contrato br.com.nutrikids.auth.Identidade.
+          example: RESPONSAVEL
+        nome:
+          type: string
+          description: Campo nome do contrato br.com.nutrikids.auth.Identidade.
+          example: Pessoa Sintética
+    AgendaDados:
+      type: object
+      description: Contrato Agenda Dados. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        pacienteId:
+          type: string
+          format: uuid
+          description: Campo pacienteId do contrato AgendaDados.
+        profissionalId:
+          type: string
+          format: uuid
+          description: Campo profissionalId do contrato AgendaDados.
+        inicio:
+          type: string
+          format: date-time
+          description: Campo inicio do contrato AgendaDados.
+        fim:
+          type: string
+          format: date-time
+          description: Campo fim do contrato AgendaDados.
+      required:
+      - fim
+      - inicio
+      - pacienteId
+      - profissionalId
+    AgendaVista:
+      type: object
+      description: Contrato Agenda Vista. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Campo id do contrato AgendaVista.
+        pacienteId:
+          type: string
+          format: uuid
+          description: Campo pacienteId do contrato AgendaVista.
+        profissionalId:
+          type: string
+          format: uuid
+          description: Campo profissionalId do contrato AgendaVista.
+        inicio:
+          type: string
+          format: date-time
+          description: Campo inicio do contrato AgendaVista.
+        fim:
+          type: string
+          format: date-time
+          description: Campo fim do contrato AgendaVista.
+        status:
+          type: string
+          description: Campo status do contrato AgendaVista.
+        versao:
+          type: integer
+          format: int64
+          description: Campo versao do contrato AgendaVista.
+    AgendaEstado:
+      type: object
+      description: Contrato Agenda Estado. Exemplos e identificadores exclusivamente
+        sintéticos.
+      properties:
+        status:
+          type: string
+          description: Campo status do contrato AgendaEstado.
+          pattern: CANCELADA|CONCLUIDA
+      required:
+      - status
+    br.com.nutrikids.auth.Erros.ErroApi:
+      properties:
+        mensagem:
+          type: string
+          description: Campo mensagem do contrato br.com.nutrikids.auth.Erros.ErroApi.
+        campos:
+          type: array
+          description: Campo campos do contrato br.com.nutrikids.auth.Erros.ErroApi.
+          items:
+            type: string
+  securitySchemes:
+    sessao:
+      type: apiKey
+      name: JSESSIONID
+      in: cookie
+    csrf:
+      type: apiKey
+      name: X-XSRF-TOKEN
+      in: header

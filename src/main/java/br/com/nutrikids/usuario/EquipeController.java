@@ -5,112 +5,64 @@ import br.com.nutrikids.auth.*;
 import br.com.nutrikids.clinica.*;
 import br.com.nutrikids.paciente.*;
 import br.com.nutrikids.responsavel.*;
+import br.com.nutrikids.usuario.EquipeService.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.*;
 import jakarta.validation.constraints.*;
 import java.util.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Tag(name = "usuario")
 @RequestMapping("/api")
 public class EquipeController {
-  private final UsuarioRepository users;
-  private final ClinicaRepository clinics;
-  private final VinculoRepository links;
-  private final AcessoPaciente acesso;
-  private final PasswordEncoder encoder;
-  private final Auditoria audit;
+  private final EquipeService service;
 
-  public EquipeController(
-      UsuarioRepository u,
-      ClinicaRepository c,
-      VinculoRepository l,
-      AcessoPaciente a,
-      PasswordEncoder e,
-      Auditoria au) {
-    users = u;
-    clinics = c;
-    links = l;
-    acesso = a;
-    encoder = e;
-    audit = au;
+  public EquipeController(EquipeService service) {
+    this.service = service;
   }
 
+  @Operation(
+      summary = "Listar equipe",
+      description = "ADMIN ou NUTRICIONISTA. Nunca retorna hash de senha.")
   @GetMapping("/equipe")
-  List<Usuario> listar() {
-    AcessoPaciente.profissional();
-    return users.findByClinicaId(Identidade.atual().clinicaId());
+  public List<VistaUsuario> listar(
+      @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size) {
+    return service.listar(page, size);
   }
 
-  record Dados(
-      @NotBlank @Size(max = 150) String nome,
-      @NotBlank @Email String email,
-      @NotBlank @Size(min = 12, max = 72) String senha,
-      @NotNull @Pattern(regexp = "ADMIN|NUTRICIONISTA|RESPONSAVEL") String perfil,
-      @Size(max = 30) String crn) {}
-
+  @Operation(
+      summary = "Criar usuário",
+      description =
+          "Apenas ADMIN. Senha de 12 caracteres no mínimo e até 72 bytes UTF-8; perfis ADMIN,"
+              + " NUTRICIONISTA, RESPONSAVEL.")
   @PostMapping("/equipe")
-  @Transactional
   @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-  Usuario criar(@Valid @RequestBody Dados d) {
-    AcessoPaciente.admin();
-    if (d.senha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
-      throw new org.springframework.web.server.ResponseStatusException(
-          org.springframework.http.HttpStatus.BAD_REQUEST, "Senha excede 72 bytes UTF-8");
-    var u = new Usuario();
-    u.id = UUID.randomUUID();
-    u.clinicaId = Identidade.atual().clinicaId();
-    u.nome = d.nome();
-    u.email = d.email().toLowerCase(Locale.ROOT);
-    u.senha = encoder.encode(d.senha());
-    u.perfil = d.perfil();
-    u.crn = d.crn();
-    users.save(u);
-    audit.registrar("USUARIO_CRIADO", u.id);
-    return u;
+  public VistaUsuario criar(@Valid @RequestBody Dados d) {
+    return service.criar(d);
   }
 
-  record Vincular(@NotNull UUID usuarioId, @NotBlank @Size(max = 60) String parentesco) {}
-
+  @Operation(
+      summary = "Vincular responsável",
+      description =
+          "Apenas ADMIN; usuário RESPONSAVEL e paciente devem pertencer à clínica da sessão.")
   @PostMapping("/pacientes/{id}/responsaveis")
-  @Transactional
-  void vincular(@PathVariable UUID id, @Valid @RequestBody Vincular d) {
-    AcessoPaciente.admin();
-    acesso.obter(id);
-    var i = Identidade.atual();
-    users
-        .findById(d.usuarioId())
-        .filter(u -> u.clinicaId.equals(i.clinicaId()) && u.perfil.equals("RESPONSAVEL"))
-        .orElseThrow(
-            () ->
-                new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST));
-    var v = new Vinculo();
-    v.id = UUID.randomUUID();
-    v.clinicaId = i.clinicaId();
-    v.pacienteId = id;
-    v.usuarioId = d.usuarioId();
-    v.parentesco = d.parentesco();
-    links.save(v);
-    audit.registrar("RESPONSAVEL_VINCULADO", id);
+  public void vincular(@PathVariable UUID id, @Valid @RequestBody Vincular d) {
+    service.vincular(id, d);
   }
 
+  @Operation(
+      summary = "Consultar clínica",
+      description = "Equipe clínica; clínica derivada da sessão.")
   @GetMapping("/clinica")
-  Clinica clinica() {
-    AcessoPaciente.profissional();
-    return clinics.findById(Identidade.atual().clinicaId()).orElseThrow();
+  public VistaClinica clinica() {
+    return service.clinica();
   }
 
-  record Nome(@NotBlank @Size(max = 150) String nome) {}
-
+  @Operation(summary = "Renomear clínica", description = "Apenas ADMIN.")
   @PutMapping("/clinica")
-  @Transactional
-  Clinica editar(@Valid @RequestBody Nome d) {
-    AcessoPaciente.admin();
-    var c = clinica();
-    c.nome = d.nome();
-    audit.registrar("CLINICA_EDITADA", c.id);
-    return clinics.save(c);
+  public VistaClinica editar(@Valid @RequestBody Nome d) {
+    return service.editar(d);
   }
 }
