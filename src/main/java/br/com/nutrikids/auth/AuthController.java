@@ -1,6 +1,8 @@
 package br.com.nutrikids.auth;
 
 import br.com.nutrikids.usuario.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@Tag(name = "auth")
 @RequestMapping("/api/auth")
 public class AuthController {
   private final UsuarioRepository users;
@@ -30,13 +33,32 @@ public class AuthController {
     dummy = e.encode(UUID.randomUUID().toString());
   }
 
-  record Login(@NotBlank @Email String email, @NotBlank @Size(max = 72) String senha) {}
+  @io.swagger.v3.oas.annotations.media.Schema(
+      name = "AuthLogin",
+      description = "Contrato Auth Login. Exemplos e identificadores exclusivamente sintéticos.")
+  record Login(
+      @NotBlank @Email String email,
+      @NotBlank
+          @Size(max = 72)
+          @io.swagger.v3.oas.annotations.media.Schema(
+              accessMode = io.swagger.v3.oas.annotations.media.Schema.AccessMode.WRITE_ONLY,
+              example = "SenhaSintetica123!")
+          String senha) {}
 
+  @Operation(
+      summary = "Obter token CSRF",
+      description =
+          "Público. Cria cookie XSRF-TOKEN; enviar token no header X-XSRF-TOKEN nas mutações.")
   @GetMapping("/csrf")
-  Map<String, String> csrf(CsrfToken t) {
+  Map<String, String> csrf(@io.swagger.v3.oas.annotations.Parameter(hidden = true) CsrfToken t) {
     return Map.of("token", t.getToken());
   }
 
+  @Operation(
+      summary = "Autenticar por sessão",
+      description =
+          "Público com CSRF. Credenciais sintéticas; renova sessão para impedir fixação. Limite"
+              + " local 15 tentativas em 15 minutos.")
   @PostMapping("/login")
   Identidade login(@Valid @RequestBody Login r, HttpServletRequest req, HttpServletResponse res) {
     limite.conferir(req.getRemoteAddr());
@@ -61,6 +83,9 @@ public class AuthController {
     return i;
   }
 
+  @Operation(
+      summary = "Consultar identidade autenticada",
+      description = "Retorna somente identidade da sessão atual.")
   @GetMapping("/me")
   Identidade me() {
     return Identidade.atual();

@@ -411,4 +411,99 @@ class FluxoClinicoTest {
     mvc.perform(get("/api/pacientes").session(a))
         .andExpect(header().string("Cache-Control", "no-store"));
   }
+
+  @Test
+  void duracaoExataNaoTruncaMinutos() throws Exception {
+    var a = login("admin@test.invalid");
+    for (String fim :
+        List.of(
+            "2026-12-01T18:00:00.001-03:00",
+            "2026-12-01T18:59:00-03:00",
+            "2026-12-01T10:00:00-03:00")) {
+      mvc.perform(
+              post("/api/agenda")
+                  .session(a)
+                  .with(csrf())
+                  .contentType("application/json")
+                  .content(
+                      json.writeValueAsString(
+                          Map.of(
+                              "pacienteId",
+                              patient,
+                              "profissionalId",
+                              admin,
+                              "inicio",
+                              "2026-12-01T10:00:00-03:00",
+                              "fim",
+                              fim))))
+          .andExpect(status().isBadRequest());
+    }
+    mvc.perform(
+            post("/api/agenda")
+                .session(a)
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    json.writeValueAsString(
+                        Map.of(
+                            "pacienteId",
+                            patient,
+                            "profissionalId",
+                            admin,
+                            "inicio",
+                            "2026-12-01T10:00:00-03:00",
+                            "fim",
+                            "2026-12-01T18:00:00-03:00"))))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.clinicaId").doesNotExist());
+  }
+
+  @Test
+  void paginaFiltraAntesDeLimitarERespeitaEscopo() throws Exception {
+    var a = login("admin@test.invalid");
+    mvc.perform(get("/api/pacientes?size=101").session(a)).andExpect(status().isBadRequest());
+    mvc.perform(get("/api/pacientes?page=-1").session(a)).andExpect(status().isBadRequest());
+    mvc.perform(get("/api/pacientes?nome=inexistente&size=1").session(a))
+        .andExpect(jsonPath("$.length()").value(0));
+    mvc.perform(get("/api/pacientes?page=1&size=1").session(a))
+        .andExpect(jsonPath("$.length()").value(0));
+    mvc.perform(get("/api/pacientes?nome=sintético&size=1").session(a))
+        .andExpect(jsonPath("$.length()").value(1));
+  }
+
+  @Test
+  void relatorioRespeitaCompartilhamentoEClinica() throws Exception {
+    var a = login("admin@test.invalid");
+    mvc.perform(get("/api/pacientes/" + foreignPatient + "/relatorio.pdf").session(a))
+        .andExpect(status().isNotFound());
+    for (boolean compartilhado : List.of(false, true))
+      mvc.perform(
+              post("/api/pacientes/" + patient + "/registros")
+                  .session(a)
+                  .with(csrf())
+                  .contentType("application/json")
+                  .content(
+                      json.writeValueAsString(
+                          Map.of(
+                              "tipo",
+                              "PRONTUARIO",
+                              "conteudo",
+                              compartilhado ? "PUBLICOSINTETICO" : "PRIVADOSINTETICO",
+                              "compartilhado",
+                              compartilhado))))
+          .andExpect(status().isCreated());
+    vincular();
+    var f = login("familia@test.invalid");
+    var bytes =
+        mvc.perform(get("/api/pacientes/" + patient + "/relatorio.pdf").session(f))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+    try (var pdf = org.apache.pdfbox.Loader.loadPDF(bytes)) {
+      var texto = new org.apache.pdfbox.text.PDFTextStripper().getText(pdf);
+      assertTrue(texto.contains("PUBLICOSINTETICO"));
+      assertFalse(texto.contains("PRIVADOSINTETICO"));
+    }
+  }
 }

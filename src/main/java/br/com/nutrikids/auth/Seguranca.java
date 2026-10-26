@@ -23,7 +23,13 @@ public class Seguranca {
                     .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
         .authorizeHttpRequests(
             a ->
-                a.requestMatchers("/api/auth/csrf", "/api/auth/login")
+                a.requestMatchers(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/v3/api-docs.yaml")
+                    .denyAll()
+                    .requestMatchers("/api/auth/csrf", "/api/auth/login")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

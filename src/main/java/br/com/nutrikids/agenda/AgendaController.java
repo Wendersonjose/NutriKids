@@ -1,86 +1,63 @@
 package br.com.nutrikids.agenda;
 
+import br.com.nutrikids.agenda.AgendaService.*;
 import br.com.nutrikids.auditoria.*;
 import br.com.nutrikids.auth.*;
 import br.com.nutrikids.paciente.*;
 import br.com.nutrikids.usuario.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.*;
 import jakarta.validation.constraints.*;
 import java.time.*;
 import java.util.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
+@Tag(name = "agenda")
 @RequestMapping("/api/agenda")
 public class AgendaController {
-  private final ConsultaRepository repo;
-  private final UsuarioRepository users;
-  private final AcessoPaciente acesso;
-  private final Auditoria audit;
+  private final AgendaService service;
 
-  public AgendaController(
-      ConsultaRepository r, UsuarioRepository u, AcessoPaciente a, Auditoria au) {
-    repo = r;
-    users = u;
-    acesso = a;
-    audit = au;
+  public AgendaController(AgendaService service) {
+    this.service = service;
   }
 
-  record Dados(
-      @NotNull UUID pacienteId,
-      @NotNull UUID profissionalId,
-      @NotNull OffsetDateTime inicio,
-      @NotNull OffsetDateTime fim) {}
-
+  @Operation(
+      summary = "Listar agenda",
+      description =
+          "Equipe clínica. Filtros profissionalId e início inclusivo/fim exclusivo por início da"
+              + " consulta. page/size limitam resultados.")
   @GetMapping
-  List<Consulta> listar() {
-    AcessoPaciente.profissional();
-    return repo.findByClinicaIdOrderByInicioAsc(Identidade.atual().clinicaId());
+  public List<Vista> listar(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "50") int size,
+      @RequestParam(required = false) UUID profissionalId,
+      @RequestParam(required = false) OffsetDateTime inicio,
+      @RequestParam(required = false) OffsetDateTime fim) {
+    return service.listar(page, size, profissionalId, inicio, fim);
   }
 
+  @Operation(
+      summary = "Agendar consulta",
+      description =
+          "Equipe clínica. Paciente e profissional da mesma clínica. Intervalo positivo até 8 horas"
+              + " exatas. Sobreposição de paciente ou profissional retorna 409 no PostgreSQL,"
+              + " inclusive concorrente.")
   @PostMapping
-  @Transactional
   @ResponseStatus(HttpStatus.CREATED)
-  Consulta criar(@Valid @RequestBody Dados d) {
-    AcessoPaciente.profissional();
-    acesso.obter(d.pacienteId());
-    var i = Identidade.atual();
-    var u =
-        users
-            .findById(d.profissionalId())
-            .filter(x -> x.clinicaId.equals(i.clinicaId()) && !x.perfil.equals("RESPONSAVEL"))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST));
-    if (!d.fim().isAfter(d.inicio()) || Duration.between(d.inicio(), d.fim()).toHours() > 8)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Intervalo inválido");
-    var c = new Consulta();
-    c.id = UUID.randomUUID();
-    c.clinicaId = i.clinicaId();
-    c.pacienteId = d.pacienteId();
-    c.profissionalId = u.id;
-    c.inicio = d.inicio();
-    c.fim = d.fim();
-    c.status = "AGENDADA";
-    repo.saveAndFlush(c);
-    audit.registrar("CONSULTA_CRIADA", c.id);
-    return c;
+  public Vista criar(@Valid @RequestBody Dados d) {
+    return service.criar(d);
   }
 
-  record Estado(@NotNull @Pattern(regexp = "CANCELADA|CONCLUIDA") String status) {}
-
+  @Operation(
+      summary = "Encerrar consulta",
+      description =
+          "Equipe clínica; transição de AGENDADA para CANCELADA ou CONCLUIDA."
+              + " Repetição/concorrência retorna 409.")
   @PatchMapping("/{id}")
-  @Transactional
-  Consulta estado(@PathVariable UUID id, @Valid @RequestBody Estado d) {
-    AcessoPaciente.profissional();
-    var c =
-        repo.findByIdAndClinicaId(id, Identidade.atual().clinicaId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-    if (!c.status.equals("AGENDADA"))
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Consulta já encerrada");
-    c.status = d.status();
-    audit.registrar("CONSULTA_" + d.status(), id);
-    return repo.save(c);
+  public Vista estado(@PathVariable UUID id, @Valid @RequestBody Estado d) {
+    return service.estado(id, d);
   }
 }
