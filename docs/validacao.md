@@ -7,6 +7,7 @@
 | PostgreSQL específico | 1 teste pulado; banco não disponível |
 | Frontend Vitest | 9 testes passaram; zero falhas |
 | TypeScript + Vite production build | Sucesso |
+| HTTP real via Vite + JAR Spring Boot | 8 verificações passaram: HTML, login/CSRF, paciente, plano, medidas, dashboard, PDF e logout; H2 sintético |
 | Teste visual em navegador desktop/mobile | Não concluído: navegador remoto não alcança localhost do ambiente |
 
 ## Cobertura significativa
