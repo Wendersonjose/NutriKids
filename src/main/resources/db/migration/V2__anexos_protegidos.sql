@@ -1,0 +1,2 @@
+CREATE TABLE anexo(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,autor_id uuid NOT NULL,titulo varchar(255) NOT NULL,mime varchar(255) NOT NULL,compartilhado boolean NOT NULL,criado_em timestamptz NOT NULL,conteudo bytea NOT NULL,FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id),FOREIGN KEY(autor_id,clinica_id) REFERENCES usuario(id,clinica_id));
+CREATE INDEX anexo_paciente ON anexo(clinica_id,paciente_id,criado_em DESC);

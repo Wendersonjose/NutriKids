@@ -1,0 +1,68 @@
+package br.com.nutrikids.auth;
+
+import br.com.nutrikids.usuario.*;
+import jakarta.servlet.http.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import java.util.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+  private final UsuarioRepository users;
+  private final PasswordEncoder encoder;
+  private final ProtecaoLogin limite;
+  private final String dummy;
+
+  public AuthController(UsuarioRepository u, PasswordEncoder e, ProtecaoLogin l) {
+    users = u;
+    encoder = e;
+    limite = l;
+    dummy = e.encode(UUID.randomUUID().toString());
+  }
+
+  record Login(@NotBlank @Email String email, @NotBlank @Size(max = 72) String senha) {}
+
+  @GetMapping("/csrf")
+  Map<String, String> csrf(CsrfToken t) {
+    return Map.of("token", t.getToken());
+  }
+
+  @PostMapping("/login")
+  Identidade login(@Valid @RequestBody Login r, HttpServletRequest req, HttpServletResponse res) {
+    limite.conferir(req.getRemoteAddr());
+    if (r.senha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+    var optional = users.findByEmail(r.email().toLowerCase(Locale.ROOT));
+    boolean valida = encoder.matches(r.senha(), optional.map(x -> x.senha).orElse(dummy));
+    if (!valida || optional.isEmpty())
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas");
+    var u = optional.get();
+    if (req.getSession(false) != null) {
+      req.getSession().invalidate();
+    }
+    req.getSession(true);
+    var i = new Identidade(u.id, u.clinicaId, u.perfil, u.nome);
+    var context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(
+        new UsernamePasswordAuthenticationToken(
+            i, null, List.of(new SimpleGrantedAuthority("ROLE_" + u.perfil))));
+    SecurityContextHolder.setContext(context);
+    new HttpSessionSecurityContextRepository().saveContext(context, req, res);
+    return i;
+  }
+
+  @GetMapping("/me")
+  Identidade me() {
+    return Identidade.atual();
+  }
+}

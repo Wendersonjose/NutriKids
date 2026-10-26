@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:nutri;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+BOOTSTRAP_EMAIL:
+BOOTSTRAP_PASSWORD:

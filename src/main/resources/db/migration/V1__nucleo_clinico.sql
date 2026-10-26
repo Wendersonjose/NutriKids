@@ -1,0 +1,15 @@
+CREATE TABLE clinica(id uuid PRIMARY KEY,nome varchar(255) NOT NULL);
+CREATE TABLE usuario(id uuid PRIMARY KEY,clinica_id uuid NOT NULL REFERENCES clinica(id),email varchar(255) NOT NULL UNIQUE,senha varchar(255) NOT NULL,nome varchar(255) NOT NULL,perfil varchar(255) NOT NULL CHECK(perfil IN ('ADMIN','NUTRICIONISTA','RESPONSAVEL')),crn varchar(255),UNIQUE(id,clinica_id));
+CREATE TABLE paciente(id uuid PRIMARY KEY,clinica_id uuid NOT NULL REFERENCES clinica(id),nome varchar(255) NOT NULL,nascimento date NOT NULL,sexo varchar(255) NOT NULL CHECK(sexo IN ('F','M','NAO_INFORMADO')),observacoes varchar(4000),criado_em timestamptz,versao bigint NOT NULL DEFAULT 0,UNIQUE(id,clinica_id));
+CREATE TABLE vinculo(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,usuario_id uuid NOT NULL,parentesco varchar(255),FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id),FOREIGN KEY(usuario_id,clinica_id) REFERENCES usuario(id,clinica_id),UNIQUE(paciente_id,usuario_id));
+CREATE TABLE registro(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,autor_id uuid NOT NULL,tipo varchar(255) NOT NULL,conteudo varchar(12000) NOT NULL,compartilhado boolean NOT NULL,criado_em timestamptz NOT NULL,FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id),FOREIGN KEY(autor_id,clinica_id) REFERENCES usuario(id,clinica_id));
+CREATE TABLE medida(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,autor_id uuid NOT NULL,data date NOT NULL,peso_kg numeric(6,2) NOT NULL CHECK(peso_kg>0),altura_cm numeric(6,2) NOT NULL CHECK(altura_cm>0),posicao varchar(255) NOT NULL,FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id),FOREIGN KEY(autor_id,clinica_id) REFERENCES usuario(id,clinica_id));
+CREATE TABLE consulta(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,profissional_id uuid NOT NULL,inicio timestamptz NOT NULL,fim timestamptz NOT NULL,status varchar(255) NOT NULL CHECK(status IN ('AGENDADA','CANCELADA','CONCLUIDA')),versao bigint NOT NULL DEFAULT 0,CHECK(fim>inicio),FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id),FOREIGN KEY(profissional_id,clinica_id) REFERENCES usuario(id,clinica_id));
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+ALTER TABLE consulta ADD CONSTRAINT horario_profissional EXCLUDE USING gist(profissional_id WITH =,tstzrange(inicio,fim,'[)') WITH &&) WHERE(status='AGENDADA');
+ALTER TABLE consulta ADD CONSTRAINT horario_paciente EXCLUDE USING gist(paciente_id WITH =,tstzrange(inicio,fim,'[)') WITH &&) WHERE(status='AGENDADA');
+CREATE TABLE evento(id uuid PRIMARY KEY,clinica_id uuid NOT NULL REFERENCES clinica(id),usuario_id uuid NOT NULL,recurso_id uuid,acao varchar(255) NOT NULL,instante timestamptz NOT NULL);
+CREATE INDEX paciente_clinica ON paciente(clinica_id,nome);
+CREATE INDEX registro_historico ON registro(clinica_id,paciente_id,criado_em DESC);
+CREATE INDEX medida_historico ON medida(clinica_id,paciente_id,data);
+CREATE INDEX agenda_clinica ON consulta(clinica_id,inicio);
