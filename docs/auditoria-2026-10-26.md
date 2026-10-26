@@ -20,7 +20,7 @@ Branch: feat/auditoria-arquitetura-openapi.
 
 O ambiente local oferece somente identidade root e impede mudança de UID. Download isolado de PostgreSQL 16 foi possível, mas execução normal como usuário sem privilégios ficou bloqueada (`setuid`/user namespace não permitidos). Não foram removidas verificações do PostgreSQL, nem usados bancos de outros projetos.
 
-O CI usa serviço PostgreSQL local do runner Ubuntu 24.04, banco exclusivo `nutrikids_auditoria_test`, usuário descartável e dados sintéticos; não usa Docker. TEST_DB_URL habilita PostgresMigrationTest e PostgresConcorrenciaTest, que verificam Flyway + validate JPA, sobreposição concorrente em conexões separadas, SQLSTATE 23P01, intervalos adjacentes, duração exata, FK entre clínicas e presença de exclusões/índices. Resultado remoto deve ser conferido no PR.
+O CI usa serviço PostgreSQL local do runner Ubuntu 24.04, banco exclusivo `nutrikids_auditoria_test`, usuário descartável e dados sintéticos; não usa Docker. TEST_DB_URL habilita PostgresMigrationTest e PostgresConcorrenciaTest, que verificam Flyway + validate JPA, sobreposição concorrente em conexões separadas, SQLSTATE 23P01, intervalos adjacentes, duração exata, FK entre clínicas e presença de exclusões/índices. A execução remota foi concluída com sucesso; detalhes no resultado abaixo.
 
 Para executar localmente com banco separado já criado:
 
@@ -50,3 +50,20 @@ Comando: `mvn verify` com Maven 3.9.11 e Java 17.0.20; finalizado em 26/10/2026 
 | br.com.nutrikids.auth.ProtecaoLoginTest | 1 | 0 | 0 | 0 |
 
 27 testes executados e aprovados; 4 casos PostgreSQL ignorados localmente por ausência de TEST_DB_URL. Os casos parametrizados de concorrência só são expandidos quando o perfil PostgreSQL é habilitado. Isso não comprova Flyway, validate JPA ou concorrência PostgreSQL. O contrato foi exportado de OpenApiTest aprovado, sem consultas a dados reais. `git diff --check` também executado sem erros.
+
+## Resultado PostgreSQL executado no GitHub Actions
+
+Execução: https://github.com/Wendersonjose/NutriKids/actions/runs/40423324052
+Commit de implementação testado: `761f749ae941a5d2d37140d7fda3062ec49c8eba`.
+Finalizado em 26/10/2026 às 20:59:14 (Brasília), Java 17, PostgreSQL 16.15 nativo no runner, sem Docker.
+
+**Maven verify: BUILD SUCCESS — 32 testes, 0 falhas, 0 erros, 0 ignorados.**
+
+- Flyway validou e aplicou V1, V2 e V3 em banco de teste separado.
+- A inicialização JPA com `ddl-auto=validate` passou nesse schema.
+- PostgresConcorrenciaTest executou 4 casos: disputas independentes por paciente/profissional, intervalos adjacentes/duração máxima e FK entre clínicas/índices/exclusões.
+- PostgresMigrationTest executou 1 caso de migration/sobreposição.
+- As outras suítes executaram 27 testes de API, sessão/CSRF, perfis, isolamento, DTOs, PDF e Swagger.
+- O teste OpenAPI conferiu cobertura de todas as rotas/métodos dos controllers: contrato com 17 caminhos e 25 operações, incluindo logout do filtro de segurança.
+
+O resultado local com 4 ignorados não foi confundido com validação PostgreSQL: a confirmação vem desta execução remota. O commit posterior altera somente documentação dos resultados. A aprovação não remove as limitações clínicas/LGPD e os itens de evolução descritos em arquitetura.md.

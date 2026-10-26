@@ -34,7 +34,6 @@ OpenAPI: documentação e CSP específica somente em dev sem prod; rotas de docu
 
 | Prioridade | Pendência | Motivo |
 |---|---|---|
-| P0 | Confirmar Flyway, validate JPA, exclusões e corrida real em PostgreSQL no CI | H2 não substitui PostgreSQL; conferir resultado antes de integrar |
 | P0 | Revisão clínica/OMS e LGPD operacional | Não há curvas validadas, gestão completa de consentimentos/retenção, recuperação de desastre ou auditoria inviolável |
 | P1 | If-Match/versão esperada em edição de paciente e confirmação de transições | @Version protege concorrência transacional, não toda edição baseada em tela desatualizada |
 | P1 | Navegação paginada no frontend separado | Evitar ocultar registros depois do limite de 50 |
@@ -49,3 +48,5 @@ Antes de aplicar V3 em banco existente, consultar durações maiores que 8h e co
 ```sql
 select id, inicio, fim from consulta where fim - inicio > interval '8 hours';
 ```
+
+Validação PostgreSQL concluída: [CI 40423324052](https://github.com/Wendersonjose/NutriKids/actions/runs/40423324052), PostgreSQL 16.15, 3 migrations aplicadas, JPA validate aprovado e 32 testes sem falhas/erros/ignorados, incluindo concorrência independente por paciente e profissional. Evidências em auditoria-2026-10-26.md.
