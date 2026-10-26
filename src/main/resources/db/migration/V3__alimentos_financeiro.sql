@@ -1,0 +1,6 @@
+CREATE TABLE alimento(id uuid PRIMARY KEY,clinica_id uuid NOT NULL REFERENCES clinica(id),nome varchar(255) NOT NULL,fonte varchar(255) NOT NULL,versao_fonte varchar(255) NOT NULL,permissao_uso varchar(255) NOT NULL);
+CREATE TABLE alimento_nutriente(alimento_id uuid NOT NULL REFERENCES alimento(id),nutriente varchar(255) NOT NULL,valor numeric(18,6) NOT NULL CHECK(valor>=0),PRIMARY KEY(alimento_id,nutriente));
+CREATE TABLE alimento_medida(alimento_id uuid NOT NULL REFERENCES alimento(id),medida varchar(255) NOT NULL,gramas numeric(18,6) NOT NULL CHECK(gramas>0),PRIMARY KEY(alimento_id,medida));
+CREATE INDEX alimento_clinica ON alimento(clinica_id,nome);
+CREATE TABLE lancamento(id uuid PRIMARY KEY,clinica_id uuid NOT NULL REFERENCES clinica(id),tipo varchar(255) NOT NULL CHECK(tipo IN ('RECEITA','DESPESA')),descricao varchar(255) NOT NULL,categoria varchar(255) NOT NULL,conta varchar(255) NOT NULL,valor numeric(14,2) NOT NULL CHECK(valor>0),competencia date NOT NULL,vencimento date NOT NULL,pagamento date,referencia_conciliacao varchar(255),versao bigint NOT NULL DEFAULT 0,CHECK((pagamento IS NULL)=(referencia_conciliacao IS NULL)));
+CREATE INDEX lancamento_competencia ON lancamento(clinica_id,competencia,vencimento);

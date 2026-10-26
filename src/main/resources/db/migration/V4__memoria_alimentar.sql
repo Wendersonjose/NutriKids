@@ -1,0 +1,2 @@
+CREATE TABLE partida(id uuid PRIMARY KEY,clinica_id uuid NOT NULL,paciente_id uuid NOT NULL,tabuleiro varchar(255) NOT NULL,encontrados varchar(255) NOT NULL,tentativas integer NOT NULL CHECK(tentativas>=0),concluida timestamptz,criada_em timestamptz NOT NULL,versao bigint NOT NULL DEFAULT 0,FOREIGN KEY(paciente_id,clinica_id) REFERENCES paciente(id,clinica_id));
+CREATE INDEX partida_paciente ON partida(clinica_id,paciente_id,criada_em DESC);

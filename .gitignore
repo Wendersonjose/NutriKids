@@ -4,3 +4,9 @@ target/
 uploads/
 .idea/
 *.iml
+
+node_modules/
+dist/
+*.tsbuildinfo
+
+node_modules
