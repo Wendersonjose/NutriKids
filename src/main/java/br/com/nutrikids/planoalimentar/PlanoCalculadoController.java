@@ -1,4 +1,5 @@
 package br.com.nutrikids.planoalimentar;
+import br.com.nutrikids.planoalimentar.AlimentoController.Item;
 import br.com.nutrikids.auth.*;import br.com.nutrikids.paciente.*;import br.com.nutrikids.prontuario.*;import br.com.nutrikids.auditoria.*;
 import jakarta.validation.*;import jakarta.validation.constraints.*;import java.util.*;import java.math.*;import java.time.*;
 import org.springframework.web.bind.annotation.*;import org.springframework.transaction.annotation.Transactional;
@@ -6,7 +7,7 @@ import org.springframework.web.bind.annotation.*;import org.springframework.tran
 public class PlanoCalculadoController {
  private final AcessoPaciente acesso;private final AlimentoController alimentos;private final RegistroRepository registros;private final Auditoria audit;
  public PlanoCalculadoController(AcessoPaciente a,AlimentoController c,RegistroRepository r,Auditoria au){acesso=a;alimentos=c;registros=r;audit=au;}
- public record Refeicao(@NotBlank @Size(max=120) String nome,@NotEmpty @Size(max=30) List<@Valid AlimentoController.Item> itens){}
+ public record Refeicao(@NotBlank @Size(max=120) String nome,@NotEmpty @Size(max=30) List<@Valid Item> itens){}
  public record Plano(@NotBlank @Size(max=120) String titulo,@NotEmpty @Size(max=12) List<@Valid Refeicao> refeicoes,boolean compartilhado){}
  @PostMapping @Transactional @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
  public Registro salvar(@PathVariable UUID paciente,@Valid @RequestBody Plano d){
@@ -15,7 +16,7 @@ public class PlanoCalculadoController {
  for(var refeicao:d.refeicoes()){
  var calculo=alimentos.calcular(new AlimentoController.Refeicao(refeicao.itens()));
  @SuppressWarnings("unchecked") var total=(Map<String,BigDecimal>)calculo.get("totais");totais.add(total);
- linhas.add(refeicao.nome());for(var item:refeicao.itens())linhas.add("Alimento "+item.alimentoId()+": "+item.quantidade()+" "+(item.medida()==null?"g":item.medida()));
+ linhas.add(refeicao.nome());linhas.add("Porções: "+calculo.get("porcoes"));for(var item:refeicao.itens())linhas.add("Alimento "+item.alimentoId()+": "+item.quantidade()+" "+(item.medida()==null?"g":item.medida()));
  linhas.add("Nutrientes: "+total);linhas.add("Fontes: "+calculo.get("fontes"));
  }
  linhas.add("Total diário dos nutrientes completos em todas as refeições: "+Composicao.somar(totais));

@@ -34,7 +34,7 @@ jobs:
           sudo systemctl start postgresql
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE nutrikids_ci LOGIN PASSWORD 'synthetic-ci-only' CREATEDB;"
           sudo -u postgres createdb -O nutrikids_ci nutrikids_ci
-      - run: mvn -B -Dtest=PostgresMigrationTest test
+      - run: mvn -B -Dtest=PostgresMigrationTest,PostgresFluxoClinicoTest test
         env:
           TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/nutrikids_ci
           TEST_DB_USERNAME: nutrikids_ci
@@ -42,8 +42,4 @@ jobs:
       - name: Backup e restauração em banco separado
         env:
           PGPASSWORD: synthetic-ci-only
-        run: |
-          pg_dump -h 127.0.0.1 -U nutrikids_ci -Fc nutrikids_ci -f /tmp/nutrikids.dump
-          createdb -h 127.0.0.1 -U nutrikids_ci nutrikids_restore
-          pg_restore -h 127.0.0.1 -U nutrikids_ci --exit-on-error -d nutrikids_restore /tmp/nutrikids.dump
-          psql -h 127.0.0.1 -U nutrikids_ci -d nutrikids_restore -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM flyway_schema_history WHERE success;"
+        run: bash scripts/testar-restauracao-ci.sh

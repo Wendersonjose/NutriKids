@@ -29,7 +29,7 @@ Remove-Item Env:BOOTSTRAP_PASSWORD -ErrorAction SilentlyContinue
 Remove-Item Env:BOOTSTRAP_EMAIL -ErrorAction SilentlyContinue
 ```
 
-A API inicia em http://localhost:8080. O frontend React é um projeto separado; durante desenvolvimento seu Vite deve encaminhar `/api` a http://127.0.0.1:8080. Não há frontend estático embutido neste repositório. Use cookies e CSRF na mesma origem, por proxy reverso em produção.
+A API inicia em http://localhost:8080. O frontend React está na pasta `frontend/`; durante desenvolvimento seu Vite deve encaminhar `/api` a http://127.0.0.1:8080. O JAR não embute os arquivos estáticos do frontend. Use cookies e CSRF na mesma origem, por proxy reverso em produção.
 
 `.env.example` é referência; **Spring não importa `.env` automaticamente**. Use variáveis do PowerShell ou da IDE.
 
@@ -74,3 +74,24 @@ Todo POST/PUT/PATCH e logout requer `X-XSRF-TOKEN`, obtido em `/api/auth/csrf`, 
 Backend: https://github.com/Wendersonjose/NutriKids. Este repositório contém pom.xml e src/ na raiz, documentação, scripts e CI do backend. O frontend React é mantido separadamente.
 
 Nenhum projeto anterior de nutrição foi alterado. Consulte o histórico Git e o resultado final da publicação informado na entrega.
+
+
+## Incrementos desta branch
+
+Consulte [auditoria e backlog](docs/auditoria-e-backlog.md), [validação clínica](docs/validacao-clinica.md), [novas APIs](docs/apis-incrementais.md) e [validação técnica](docs/validacao.md). O núcleo existente permanece na raiz; o frontend completo foi incluído em `frontend/`.
+
+Em outro terminal PowerShell:
+
+```powershell
+Set-Location frontend
+npm ci
+npm test
+npm run build
+npm run dev
+```
+
+Navegue em http://localhost:5173. Use a mesma origem durante a sessão. O Vite encaminha `/api` para 127.0.0.1:8080.
+
+Novas telas: Alimentos, plano calculado na ficha, evolução Z OMS, memória dos alimentos e Financeiro (ADMIN). Fonte/licença do alimento é obrigatória; nenhum catálogo TBCA/TACO foi redistribuído.
+
+Sandbox Asaas desativado sem `ASAAS_SANDBOX_TOKEN` e `ASAAS_WEBHOOK_TOKEN` (segredo próprio de pelo menos 32 caracteres). Não use a API key como segredo de webhook. Nenhuma credencial real é necessária para testes. Onboarding de assinaturas ainda não está disponível; não há criação de cobranças neste incremento.

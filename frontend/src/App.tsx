@@ -23,6 +23,7 @@ import {
 import { api } from "./api";
 import "./style.css";
 import { Crescimento, Memoria, Financeiro } from "./Modules";
+import { Alimentos, PlanoEditor } from "./Nutricao";
 type User = { id: string; clinicaId: string; perfil: string; nome: string };
 type Patient = {
   id: string;
@@ -419,6 +420,7 @@ function PatientDetail({ user }: { user: User }) {
       </header>
       <ErrorBox error={p.error} />
       <details><summary>Curvas e evolução OMS</summary><Crescimento id={id!} /></details>
+      {!family && <details><summary>Plano alimentar calculado</summary><PlanoEditor id={id!} /></details>}
       <details><summary>Jogo e acompanhamento</summary><Memoria id={id!} /></details>
       <div className="tabs">
         {Object.entries(types)
@@ -974,6 +976,7 @@ export function App() {
           </NavLink>
           {!family && (
             <>
+              <NavLink to="/alimentos">Alimentos</NavLink>
               <NavLink to="/agenda">
                 <CalendarDays size={19} /> Agenda
               </NavLink>
@@ -1026,6 +1029,7 @@ export function App() {
           {!family && (
             <>
               <Route path="/agenda" element={<Agenda />} />
+              <Route path="/alimentos" element={<Alimentos />} />
               <Route
                 path="/configuracoes"
                 element={<SettingsPage user={user} />}

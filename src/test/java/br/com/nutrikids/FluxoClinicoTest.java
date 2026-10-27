@@ -436,6 +436,7 @@ class FluxoClinicoTest {
     String id=json.readTree(r.getResponse().getContentAsString()).get("id").asText();
     String body="{\"itens\":[{\"alimentoId\":\""+id+"\",\"quantidade\":2,\"medida\":\"colher\"}]}";
     mvc.perform(post("/api/alimentos/calcular").session(session).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.totais.energia_kcal").value(50));
+    mvc.perform(post("/api/pacientes/"+patient+"/plano-calculado").session(session).with(csrf()).contentType("application/json").content("{\"titulo\":\"Plano sintético\",\"compartilhado\":true,\"refeicoes\":[{\"nome\":\"Almoço\",\"itens\":[{\"alimentoId\":\""+id+"\",\"quantidade\":50}]}]}")).andExpect(status().isCreated()).andExpect(jsonPath("$.tipo").value("PLANO_ALIMENTAR"));
     usuario("alimento-outra@test.invalid","ADMIN",other);
     mvc.perform(post("/api/alimentos/calcular").session(login("alimento-outra@test.invalid")).with(csrf()).contentType("application/json").content(body)).andExpect(status().isNotFound());
   }
@@ -457,4 +458,16 @@ class FluxoClinicoTest {
     mvc.perform(get("/api/pacientes/"+foreignPatient+"/crescimento?edema=false").session(s)).andExpect(status().isNotFound());
     mvc.perform(get("/api/pacientes/"+patient+"/crescimento").session(s)).andExpect(status().isBadRequest());
   }
+
+ @Test void privacidadeExigeVinculoERespostaAdministrativa() throws Exception {
+ var adminSession=login("admin@test.invalid");String path="/api/pacientes/"+patient+"/privacidade/solicitacoes";
+ mvc.perform(post(path).session(login("familia@test.invalid")).with(csrf()).contentType("application/json").content("{\"tipo\":\"EXCLUSAO\"}")).andExpect(status().isNotFound());
+ var r=mvc.perform(post(path).session(adminSession).with(csrf()).contentType("application/json").content("{\"tipo\":\"ACESSO\"}")).andExpect(status().isCreated()).andReturn();
+ String id=json.readTree(r.getResponse().getContentAsString()).get("id").asText();
+ mvc.perform(post(path+"/"+id+"/resposta").session(adminSession).with(csrf()).contentType("application/json").content("{\"status\":\"CONCLUIDA\",\"resposta\":\"Identidade conferida e exportação entregue por canal seguro (teste sintético)\"}")).andExpect(status().isOk());
+ mvc.perform(get("/api/pacientes/"+foreignPatient+"/privacidade/solicitacoes").session(adminSession)).andExpect(status().isNotFound());
+ }
+ @Test void webhookSemTokenNaoExigeSessaoMasRecusaEvento() throws Exception {
+ mvc.perform(post("/api/webhooks/asaas-sandbox").contentType("application/json").content("{}" )).andExpect(status().isUnauthorized());
+ }
 }

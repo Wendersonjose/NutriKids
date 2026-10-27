@@ -16,11 +16,11 @@ public class AlimentoController {
  @PostMapping @ResponseStatus(HttpStatus.CREATED) public Alimento criar(@Valid @RequestBody Dados d) {
  AcessoPaciente.profissional();var a=new Alimento();a.id=UUID.randomUUID();a.clinicaId=Identidade.atual().clinicaId();a.nome=d.nome();a.fonte=d.fonte();a.versaoFonte=d.versaoFonte();a.permissaoUso=d.permissaoUso();a.nutrientes=d.nutrientes();a.medidas=d.medidas();repo.save(a);audit.registrar("ALIMENTO_CRIADO",a.id);return a;}
  @PostMapping("/calcular") public Map<String,Object> calcular(@Valid @RequestBody Refeicao d) {
- AcessoPaciente.profissional();var itens=new ArrayList<Map<String,BigDecimal>>();var fontes=new ArrayList<String>();
+ AcessoPaciente.profissional();var itens=new ArrayList<Map<String,BigDecimal>>();var fontes=new ArrayList<String>();var porcoes=new ArrayList<String>();
  for(var item:d.itens()) {
  var a=repo.findByIdAndClinicaId(item.alimentoId(),Identidade.atual().clinicaId()).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND));
  BigDecimal gramas=item.quantidade();if(item.medida()!=null&&!item.medida().isBlank()) {var fator=a.medidas.get(item.medida());if(fator==null)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Medida caseira não cadastrada");gramas=gramas.multiply(fator);}
- itens.add(Composicao.porcao(a.nutrientes,gramas));fontes.add(a.fonte+" / "+a.versaoFonte);
- }return Map.of("itens",itens,"totais",Composicao.somar(itens),"fontes",fontes,"aviso","Somente nutrientes presentes em TODOS os itens são totalizados. Unidades: energia_kcal; macronutrientes_g; demais nutrientes devem informar unidade na chave. Sem estimativa de necessidades.");
+ porcoes.add(a.nome+": "+gramas+" g");itens.add(Composicao.porcao(a.nutrientes,gramas));fontes.add(a.fonte+" / "+a.versaoFonte);
+ }return Map.of("porcoes",porcoes,"itens",itens,"totais",Composicao.somar(itens),"fontes",fontes,"aviso","Somente nutrientes presentes em TODOS os itens são totalizados. Unidades: energia_kcal; macronutrientes_g; demais nutrientes devem informar unidade na chave. Sem estimativa de necessidades.");
  }
 }
