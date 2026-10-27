@@ -411,4 +411,197 @@ class FluxoClinicoTest {
     mvc.perform(get("/api/pacientes").session(a))
         .andExpect(header().string("Cache-Control", "no-store"));
   }
+
+  @Autowired br.com.nutrikids.gamificacao.PartidaRepository partidas;
+
+  @Test
+  void financeiroIsolaClinicasELiquidaUmaVez() throws Exception {
+    var session = login("admin@test.invalid");
+    String body =
+        "{\"tipo\":\"RECEITA\",\"descricao\":\"Consulta"
+            + " sintética\",\"categoria\":\"Consulta\",\"conta\":\"Caixa\",\"valor\":123.45,\"competencia\":\"2026-10-01\",\"vencimento\":\"2026-10-02\"}";
+    var r =
+        mvc.perform(
+                post("/api/financeiro")
+                    .session(session)
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content(body))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String id = json.readTree(r.getResponse().getContentAsString()).get("id").asText();
+    String baixa = "{\"pagamento\":\"2026-10-01\",\"referencia\":\"extrato-sintetico\"}";
+    for (int n = 0; n < 2; n++)
+      mvc.perform(
+              post("/api/financeiro/" + id + "/liquidar")
+                  .session(session)
+                  .with(csrf())
+                  .contentType("application/json")
+                  .content(baixa))
+          .andExpect(status().isOk());
+    mvc.perform(get("/api/financeiro/resumo?inicio=2026-10-01&fim=2026-10-31").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.receitasLiquidadas").value(123.45));
+    usuario("outra@test.invalid", "ADMIN", other);
+    mvc.perform(
+            post("/api/financeiro/" + id + "/liquidar")
+                .session(login("outra@test.invalid"))
+                .with(csrf())
+                .contentType("application/json")
+                .content(baixa))
+        .andExpect(status().isNotFound());
+    mvc.perform(
+            get("/api/financeiro?inicio=2026-10-01&fim=2026-10-31")
+                .session(login("familia@test.invalid")))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void financeiroRejeitaPrecisaoInvalidaENutricionista() throws Exception {
+    usuario("nutri-fin@test.invalid", "NUTRICIONISTA", clinic);
+    mvc.perform(
+            get("/api/financeiro?inicio=2026-10-01&fim=2026-10-31")
+                .session(login("nutri-fin@test.invalid")))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/api/financeiro")
+                .session(login("admin@test.invalid"))
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    "{\"tipo\":\"RECEITA\",\"descricao\":\"Teste\",\"categoria\":\"Teste\",\"conta\":\"Caixa\",\"valor\":1.234,\"competencia\":\"2026-10-01\",\"vencimento\":\"2026-10-02\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void alimentoCalculaMedidaENaoVazaOutraClinica() throws Exception {
+    var session = login("admin@test.invalid");
+    var r =
+        mvc.perform(
+                post("/api/alimentos")
+                    .session(session)
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content(
+                        "{\"nome\":\"Alimento"
+                            + " sintético\",\"fonte\":\"Teste\",\"versaoFonte\":\"1\",\"permissaoUso\":\"Dado"
+                            + " sintético\",\"nutrientes\":{\"energia_kcal\":100},\"medidas\":{\"colher\":25}}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String id = json.readTree(r.getResponse().getContentAsString()).get("id").asText();
+    String body =
+        "{\"itens\":[{\"alimentoId\":\"" + id + "\",\"quantidade\":2,\"medida\":\"colher\"}]}";
+    mvc.perform(
+            post("/api/alimentos/calcular")
+                .session(session)
+                .with(csrf())
+                .contentType("application/json")
+                .content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totais.energia_kcal").value(50));
+    mvc.perform(
+            post("/api/pacientes/" + patient + "/plano-calculado")
+                .session(session)
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    "{\"titulo\":\"Plano"
+                        + " sintético\",\"compartilhado\":true,\"refeicoes\":[{\"nome\":\"Almoço\",\"itens\":[{\"alimentoId\":\""
+                        + id
+                        + "\",\"quantidade\":50}]}]}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.tipo").value("PLANO_ALIMENTAR"));
+    usuario("alimento-outra@test.invalid", "ADMIN", other);
+    mvc.perform(
+            post("/api/alimentos/calcular")
+                .session(login("alimento-outra@test.invalid"))
+                .with(csrf())
+                .contentType("application/json")
+                .content(body))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void jogoCompletaPersistindoConquistaESemExporTabuleiro() throws Exception {
+    var session = login("admin@test.invalid");
+    String path = "/api/pacientes/" + patient + "/jogos/memoria";
+    var r =
+        mvc.perform(post(path).session(session).with(csrf()))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tabuleiro").doesNotExist())
+            .andReturn();
+    UUID id =
+        UUID.fromString(json.readTree(r.getResponse().getContentAsString()).get("id").asText());
+    String[] cartas = partidas.findById(id).orElseThrow().tabuleiro.split(",");
+    for (String alimento : new HashSet<>(Arrays.asList(cartas))) {
+      var indices = new ArrayList<Integer>();
+      for (int n = 0; n < cartas.length; n++) if (cartas[n].equals(alimento)) indices.add(n);
+      mvc.perform(
+              post(path + "/" + id + "/jogadas")
+                  .session(session)
+                  .with(csrf())
+                  .contentType("application/json")
+                  .content(
+                      json.writeValueAsString(
+                          Map.of("primeira", indices.get(0), "segunda", indices.get(1)))))
+          .andExpect(status().isOk());
+    }
+    mvc.perform(get(path).session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].concluida").value(true));
+    mvc.perform(get(path).session(login("familia@test.invalid"))).andExpect(status().isNotFound());
+    mvc.perform(get("/api/pacientes/" + foreignPatient + "/jogos/memoria").session(session))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void crescimentoNaoAceitaPacienteDeOutraClinica() throws Exception {
+    var s = login("admin@test.invalid");
+    mvc.perform(get("/api/pacientes/" + foreignPatient + "/crescimento?edema=false").session(s))
+        .andExpect(status().isNotFound());
+    mvc.perform(get("/api/pacientes/" + patient + "/crescimento").session(s))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void privacidadeExigeVinculoERespostaAdministrativa() throws Exception {
+    var adminSession = login("admin@test.invalid");
+    String path = "/api/pacientes/" + patient + "/privacidade/solicitacoes";
+    mvc.perform(
+            post(path)
+                .session(login("familia@test.invalid"))
+                .with(csrf())
+                .contentType("application/json")
+                .content("{\"tipo\":\"EXCLUSAO\"}"))
+        .andExpect(status().isNotFound());
+    var r =
+        mvc.perform(
+                post(path)
+                    .session(adminSession)
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content("{\"tipo\":\"ACESSO\"}"))
+            .andExpect(status().isCreated())
+            .andReturn();
+    String id = json.readTree(r.getResponse().getContentAsString()).get("id").asText();
+    mvc.perform(
+            post(path + "/" + id + "/resposta")
+                .session(adminSession)
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    "{\"status\":\"CONCLUIDA\",\"resposta\":\"Identidade conferida e exportação"
+                        + " entregue por canal seguro (teste sintético)\"}"))
+        .andExpect(status().isOk());
+    mvc.perform(
+            get("/api/pacientes/" + foreignPatient + "/privacidade/solicitacoes")
+                .session(adminSession))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void webhookSemTokenNaoExigeSessaoMasRecusaEvento() throws Exception {
+    mvc.perform(post("/api/webhooks/asaas-sandbox").contentType("application/json").content("{}"))
+        .andExpect(status().isUnauthorized());
+  }
 }

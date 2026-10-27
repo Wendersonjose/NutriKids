@@ -21,6 +21,11 @@ public class Erros {
                     .toList()));
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  ResponseEntity<?> argumento(IllegalArgumentException e) {
+    return ResponseEntity.badRequest().body(Map.of("mensagem", "Parâmetros inválidos"));
+  }
+
   @ExceptionHandler(DataIntegrityViolationException.class)
   ResponseEntity<?> conflito(DataIntegrityViolationException e) {
     return ResponseEntity.status(409)
