@@ -18,7 +18,7 @@ Autenticação com sessão/BCrypt 12/CSRF, clínica/equipe, pacientes/vínculos,
 | Assinaturas | Modelos/faturas, consulta administrativa, webhook autenticado/idempotente e cliente sandbox | Sem onboarding, criação/cancelamento de recorrência, trial ou restrição comercial |
 | Privacidade | Solicitações por paciente e resposta administrativa auditada | Sem executor automático de exclusão/exportação completa |
 | Segurança | Limite API por identidade/IP e ampliação de testes negativos | Limites em memória, sem compartilhamento entre instâncias |
-| Banco | V3–V6 e job nativo PostgreSQL/backup/restore no CI | Consultar resultado de execução no relatório |
+| Banco | V3–V6, PostgreSQL 16.15 e restauração validados no CI | Concorrência ampliada e operação de produção pendentes |
 
 ## Prioridades restantes
 
@@ -28,7 +28,7 @@ Autenticação com sessão/BCrypt 12/CSRF, clínica/equipe, pacientes/vínculos,
 | P0 | OMS 2007/AnthroPlus | Faixas específicas, tabelas licenciadas e testes completos de fronteira 5/10/19 anos |
 | P0 | Segurança operacional | TLS/cookie Secure, revogação, troca/recuperação de senha, MFA, antivírus e teste independente |
 | P0 | Governança LGPD | Inventário, bases legais por finalidade, melhor interesse, retenção, contrato controlador/operador e consentimento quando aplicável |
-| P0 | Homologação PostgreSQL | Migrations e testes reais, restauração com dados sintéticos, concorrência e constraints |
+| P0 | Ampliação PostgreSQL | Migrations/27 testes/restore já passaram; ampliar concorrência e recuperação operacional |
 | P1 | Assinaturas completas | Conta sandbox, onboarding seguro, planos, trial, criação sem duplicação em timeout, cancelamento, inadimplência e reconciliação |
 | P1 | Composição e receitas | Licença TBCA/TACO, revisão de unidades, importador rastreável, editor e rendimento persistido |
 | P1 | Financeiro avançado | Contas/categorias normalizadas, parcelas, pagamento parcial, estorno e conciliação por extrato |

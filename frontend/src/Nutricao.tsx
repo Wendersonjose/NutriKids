@@ -1,19 +1,282 @@
-import {useEffect,useState} from 'react';
-import {api} from './api';
-type Food={id:string;nome:string;fonte:string;versaoFonte:string;nutrientes:Record<string,number>;medidas:Record<string,number>};
-export function Alimentos(){
- const [foods,setFoods]=useState<Food[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const load=()=>api<Food[]>('/alimentos').then(setFoods).catch(e=>setError(e.message));
- useEffect(()=>{void load();},[]);
- async function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const form=e.currentTarget,d=Object.fromEntries(new FormData(form));setBusy(true);try{const nutrientes:Record<string,number>={};for(const k of ['energia_kcal','proteinas_g','carboidratos_g','gorduras_g'])if(d[k]!=='')nutrientes[k]=Number(d[k]);await api('/alimentos','POST',{nome:d.nome,fonte:d.fonte,versaoFonte:d.versaoFonte,permissaoUso:d.permissaoUso,nutrientes,medidas:d.medida?{[String(d.medida)]:Number(d.gramas)}:{}});form.reset();setError('');await load();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <><h1>Composição de alimentos</h1><p>Cadastre somente dados conferidos e com permissão de uso. Campos em branco significam informação ausente, não zero.</p><p role="alert">{error}</p><form className="panel" onSubmit={save}><h2>Novo alimento — valores por 100 g de parte comestível</h2>{['nome','fonte','versaoFonte','permissaoUso'].map(k=><label key={k}>{k}<input name={k} required maxLength={255}/></label>)}{['energia_kcal','proteinas_g','carboidratos_g','gorduras_g'].map(k=><label key={k}>{k}<input name={k} type="number" step="0.000001" min="0"/></label>)}<label>Medida caseira opcional<input name="medida" maxLength={60}/></label><label>Peso medido da medida caseira (g)<input name="gramas" type="number" min="0.001" step="0.001"/></label><button disabled={busy}>Salvar alimento</button></form><section className="panel"><h2>Catálogo ({foods.length})</h2>{foods.map(f=><article key={f.id}><h3>{f.nome}</h3><p>{f.fonte} · {f.versaoFonte}</p><p>{Object.entries(f.nutrientes).map(([k,v])=>k+': '+v).join(' | ')}</p></article>)}{!foods.length&&<p>Nenhum alimento cadastrado. Nenhuma base externa foi importada.</p>}</section></>;
+import { useEffect, useState } from "react";
+import { api } from "./api";
+type Food = {
+  id: string;
+  nome: string;
+  fonte: string;
+  versaoFonte: string;
+  nutrientes: Record<string, number>;
+  medidas: Record<string, number>;
+};
+export function Alimentos() {
+  const [foods, setFoods] = useState<Food[]>([]),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const load = () =>
+    api<Food[]>("/alimentos")
+      .then(setFoods)
+      .catch((e) => setError(e.message));
+  useEffect(() => {
+    void load();
+  }, []);
+  async function save(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget,
+      d = Object.fromEntries(new FormData(form));
+    setBusy(true);
+    try {
+      const nutrientes: Record<string, number> = {};
+      for (const k of [
+        "energia_kcal",
+        "proteinas_g",
+        "carboidratos_g",
+        "gorduras_g",
+      ])
+        if (d[k] !== "") nutrientes[k] = Number(d[k]);
+      await api("/alimentos", "POST", {
+        nome: d.nome,
+        fonte: d.fonte,
+        versaoFonte: d.versaoFonte,
+        permissaoUso: d.permissaoUso,
+        nutrientes,
+        medidas: d.medida ? { [String(d.medida)]: Number(d.gramas) } : {},
+      });
+      form.reset();
+      setError("");
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <h1>Composição de alimentos</h1>
+      <p>
+        Cadastre somente dados conferidos e com permissão de uso. Campos em
+        branco significam informação ausente, não zero.
+      </p>
+      <p role="alert">{error}</p>
+      <form className="panel" onSubmit={save}>
+        <h2>Novo alimento — valores por 100 g de parte comestível</h2>
+        {["nome", "fonte", "versaoFonte", "permissaoUso"].map((k) => (
+          <label key={k}>
+            {k}
+            <input name={k} required maxLength={255} />
+          </label>
+        ))}
+        {["energia_kcal", "proteinas_g", "carboidratos_g", "gorduras_g"].map(
+          (k) => (
+            <label key={k}>
+              {k}
+              <input name={k} type="number" step="0.000001" min="0" />
+            </label>
+          ),
+        )}
+        <label>
+          Medida caseira opcional
+          <input name="medida" maxLength={60} />
+        </label>
+        <label>
+          Peso medido da medida caseira (g)
+          <input name="gramas" type="number" min="0.001" step="0.001" />
+        </label>
+        <button disabled={busy}>Salvar alimento</button>
+      </form>
+      <section className="panel">
+        <h2>Catálogo ({foods.length})</h2>
+        {foods.map((f) => (
+          <article key={f.id}>
+            <h3>{f.nome}</h3>
+            <p>
+              {f.fonte} · {f.versaoFonte}
+            </p>
+            <p>
+              {Object.entries(f.nutrientes)
+                .map(([k, v]) => k + ": " + v)
+                .join(" | ")}
+            </p>
+          </article>
+        ))}
+        {!foods.length && (
+          <p>Nenhum alimento cadastrado. Nenhuma base externa foi importada.</p>
+        )}
+      </section>
+    </>
+  );
 }
-type Item={alimentoId:string;quantidade:number;medida:string|null;refeicao:string};
-export function PlanoEditor({id}:{id:string}){
- const [foods,setFoods]=useState<Food[]>([]),[items,setItems]=useState<Item[]>([]),[titulo,setTitulo]=useState('Plano alimentar'),[totals,setTotals]=useState<Record<string,number>|null>(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false),[share,setShare]=useState(false);
- useEffect(()=>{api<Food[]>('/alimentos').then(setFoods).catch(e=>setError(e.message));},[]);
- function add(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget));setItems(old=>[...old,{alimentoId:String(d.alimentoId),quantidade:Number(d.quantidade),medida:d.medida?String(d.medida):null,refeicao:String(d.refeicao)}]);setTotals(null);setSuccess('');}
- async function calculate(){setBusy(true);try{const r=await api<{totais:Record<string,number>}>('/alimentos/calcular','POST',{itens:items});setTotals(r.totais);setError('');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function save(){setBusy(true);try{const names=[...new Set(items.map(i=>i.refeicao))];await api('/pacientes/'+id+'/plano-calculado','POST',{titulo,compartilhado:share,refeicoes:names.map(nome=>({nome,itens:items.filter(i=>i.refeicao===nome)}))});setSuccess('Nova versão salva no histórico e disponível no PDF.');setError('');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <section className="panel"><h2>Plano alimentar calculado</h2><p>Versões são preservadas no histórico. Alterar um ingrediente substitui a composição somente na nova versão; equivalência clínica exige revisão.</p><label>Título<input value={titulo} maxLength={120} onChange={e=>setTitulo(e.target.value)}/></label><form onSubmit={add}><label>Refeição<input name="refeicao" required maxLength={120} defaultValue="Almoço"/></label><label>Alimento<select name="alimentoId" required><option value="">Selecione</option>{foods.map(f=><option value={f.id} key={f.id}>{f.nome}</option>)}</select></label><label>Quantidade<input name="quantidade" type="number" min="0.001" max="100000" step="0.001" required/></label><label>Medida caseira (em branco = gramas)<input name="medida" maxLength={60}/></label><button disabled={busy||!foods.length}>Adicionar ingrediente</button></form><ul>{items.map((i,n)=><li key={n}>{i.refeicao} · {foods.find(f=>f.id===i.alimentoId)?.nome} · {i.quantidade} {i.medida??'g'} <button onClick={()=>{setItems(items.filter((_,x)=>x!==n));setTotals(null);}}>Remover / substituir</button></li>)}</ul><button disabled={busy||!items.length} onClick={calculate}>Calcular total diário</button>{totals&&<p>{Object.entries(totals).map(([k,v])=>k+': '+v).join(' | ')||'Sem nutrientes com informação completa em todos os ingredientes.'}</p>}<p>Somente nutrientes informados em todos os ingredientes são totalizados. Não calcula necessidades individuais.</p><label><input type="checkbox" checked={share} onChange={e=>setShare(e.target.checked)}/>Compartilhar com responsáveis</label><button disabled={busy||!items.length||!titulo.trim()} onClick={save}>Salvar nova versão</button><p role="alert">{error}</p><p role="status">{success}</p><a href={'/api/pacientes/'+id+'/relatorio.pdf'}>Exportar histórico e planos em PDF</a></section>;
+type Item = {
+  alimentoId: string;
+  quantidade: number;
+  medida: string | null;
+  refeicao: string;
+};
+export function PlanoEditor({ id }: { id: string }) {
+  const [foods, setFoods] = useState<Food[]>([]),
+    [items, setItems] = useState<Item[]>([]),
+    [titulo, setTitulo] = useState("Plano alimentar"),
+    [totals, setTotals] = useState<Record<string, number> | null>(null),
+    [error, setError] = useState(""),
+    [success, setSuccess] = useState(""),
+    [busy, setBusy] = useState(false),
+    [share, setShare] = useState(false);
+  useEffect(() => {
+    api<Food[]>("/alimentos")
+      .then(setFoods)
+      .catch((e) => setError(e.message));
+  }, []);
+  function add(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.currentTarget));
+    setItems((old) => [
+      ...old,
+      {
+        alimentoId: String(d.alimentoId),
+        quantidade: Number(d.quantidade),
+        medida: d.medida ? String(d.medida) : null,
+        refeicao: String(d.refeicao),
+      },
+    ]);
+    setTotals(null);
+    setSuccess("");
+  }
+  async function calculate() {
+    setBusy(true);
+    try {
+      const r = await api<{ totais: Record<string, number> }>(
+        "/alimentos/calcular",
+        "POST",
+        { itens: items },
+      );
+      setTotals(r.totais);
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function save() {
+    setBusy(true);
+    try {
+      const names = [...new Set(items.map((i) => i.refeicao))];
+      await api("/pacientes/" + id + "/plano-calculado", "POST", {
+        titulo,
+        compartilhado: share,
+        refeicoes: names.map((nome) => ({
+          nome,
+          itens: items.filter((i) => i.refeicao === nome),
+        })),
+      });
+      setSuccess("Nova versão salva no histórico e disponível no PDF.");
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="panel">
+      <h2>Plano alimentar calculado</h2>
+      <p>
+        Versões são preservadas no histórico. Alterar um ingrediente substitui a
+        composição somente na nova versão; equivalência clínica exige revisão.
+      </p>
+      <label>
+        Título
+        <input
+          value={titulo}
+          maxLength={120}
+          onChange={(e) => setTitulo(e.target.value)}
+        />
+      </label>
+      <form onSubmit={add}>
+        <label>
+          Refeição
+          <input
+            name="refeicao"
+            required
+            maxLength={120}
+            defaultValue="Almoço"
+          />
+        </label>
+        <label>
+          Alimento
+          <select name="alimentoId" required>
+            <option value="">Selecione</option>
+            {foods.map((f) => (
+              <option value={f.id} key={f.id}>
+                {f.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Quantidade
+          <input
+            name="quantidade"
+            type="number"
+            min="0.001"
+            max="100000"
+            step="0.001"
+            required
+          />
+        </label>
+        <label>
+          Medida caseira (em branco = gramas)
+          <input name="medida" maxLength={60} />
+        </label>
+        <button disabled={busy || !foods.length}>Adicionar ingrediente</button>
+      </form>
+      <ul>
+        {items.map((i, n) => (
+          <li key={n}>
+            {i.refeicao} · {foods.find((f) => f.id === i.alimentoId)?.nome} ·{" "}
+            {i.quantidade} {i.medida ?? "g"}{" "}
+            <button
+              onClick={() => {
+                setItems(items.filter((_, x) => x !== n));
+                setTotals(null);
+              }}
+            >
+              Remover / substituir
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button disabled={busy || !items.length} onClick={calculate}>
+        Calcular total diário
+      </button>
+      {totals && (
+        <p>
+          {Object.entries(totals)
+            .map(([k, v]) => k + ": " + v)
+            .join(" | ") ||
+            "Sem nutrientes com informação completa em todos os ingredientes."}
+        </p>
+      )}
+      <p>
+        Somente nutrientes informados em todos os ingredientes são totalizados.
+        Não calcula necessidades individuais.
+      </p>
+      <label>
+        <input
+          type="checkbox"
+          checked={share}
+          onChange={(e) => setShare(e.target.checked)}
+        />
+        Compartilhar com responsáveis
+      </label>
+      <button disabled={busy || !items.length || !titulo.trim()} onClick={save}>
+        Salvar nova versão
+      </button>
+      <p role="alert">{error}</p>
+      <p role="status">{success}</p>
+      <a href={"/api/pacientes/" + id + "/relatorio.pdf"}>
+        Exportar histórico e planos em PDF
+      </a>
+    </section>
+  );
 }

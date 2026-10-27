@@ -17,13 +17,18 @@ public class Seguranca {
 
   @Bean
   SecurityFilterChain filter(HttpSecurity h) throws Exception {
-    return h.addFilterAfter(new LimiteApi(), org.springframework.security.web.access.intercept.AuthorizationFilter.class).csrf(
+    return h.addFilterAfter(
+            new LimiteApi(),
+            org.springframework.security.web.access.intercept.AuthorizationFilter.class)
+        .csrf(
             c ->
-                c.ignoringRequestMatchers("/api/webhooks/asaas-sandbox").csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                c.ignoringRequestMatchers("/api/webhooks/asaas-sandbox")
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                     .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
         .authorizeHttpRequests(
             a ->
-                a.requestMatchers("/api/auth/csrf", "/api/auth/login", "/api/webhooks/asaas-sandbox")
+                a.requestMatchers(
+                        "/api/auth/csrf", "/api/auth/login", "/api/webhooks/asaas-sandbox")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

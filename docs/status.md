@@ -1,39 +1,25 @@
 # Estado da entrega — 26/10/2026
 
-## Implementado e coberto por testes
+Entrega incremental no projeto existente, PR #1. Não está pronto para dados clínicos reais.
 
-- API Java 17 / Spring Boot 3.5.16, autenticação por sessão e logout, CSRF e BCrypt.
-- Perfis ADMIN, NUTRICIONISTA e RESPONSAVEL; limite local de tentativas de login.
-- Clínica inicial, alteração do nome, criação de usuários/nutricionistas/responsáveis e vínculo à criança.
-- Pacientes: criação, listagem por autorização, ficha e edição.
-- Agenda: criação, listagem, conclusão/cancelamento, validação de profissional/clínica e intervalo.
-- Histórico de registros com autoria, data e compartilhamento explícito.
-- Anamnese, evolução, plano alimentar manual, diário, terapia, metas e mensagens como registros textuais tipados.
-- Antropometria: peso, altura/comprimento, posição e data; validação de medida anterior ao nascimento.
-- Portal familiar web: somente crianças vinculadas, registros compartilhados, diário/mensagens e anexos.
-- Upload PDF/PNG/JPEG até 5 MB e download autenticado; compartilhamento restrito.
-- Relatório PDF de registros autorizados, inclusive quando há várias páginas.
-- Frontend React responsivo conectado à API, erros e carregamento; dashboard com contagens reais.
-- Auditoria de criação, leitura de recursos e exportação, sem conteúdo clínico no log.
+## Núcleo preservado
 
-## Parcial
+Login/logout/CSRF/BCrypt; clínica/equipe; pacientes/responsáveis e vínculo; agenda; prontuário/anamnese/diário/mensagens/metas/terapia textuais; antropometria; anexos privados; PDF; dashboard e portal familiar responsivo.
 
-Anamnese e planos são textuais: não há formulário clínico estruturado, composição nutricional ou modelos validados. Mensagens não são chat em tempo real. Metas e terapia são anotações, sem progressão automática ou recompensas. O relatório exporta textos; não incorpora imagens, curvas ou assinatura digital. Pacientes não têm campos completos de endereço, contatos e documentos nesta versão. O responsável é criado manualmente, sem convite por e-mail. Auditoria não é inviolável nem cobre todos os eventos possíveis.
+## Novos fluxos implementados
 
-## Preparado, ainda sem validação PostgreSQL
-
-Migrações Flyway V1/V2, índices, chaves compostas por clínica e exclusion constraints de agenda. A suite PostgreSQL é opt-in e foi pulada por falta de banco. Configuração padrão do produto continua PostgreSQL; H2 é exclusivo dos testes/verificação sintética.
+- OMS 2006: quatro indicadores para menores de 60 meses, Z, percentis, ajuste de posição e avisos; gráfico longitudinal em Z. Oito testes, dois casos oficiais publicados. Homologação clínica ainda pendente.
+- Catálogo alimentar por clínica com fonte/versão/permissão, composição por 100 g, medidas caseiras e cálculo por porção/refeição/dia. Nenhuma base TBCA/TACO importada.
+- Plano calculado editável na tela: salvar preserva uma nova versão textual com fontes no histórico e no PDF existente. Não há edição estruturada de versões históricas.
+- Jogo da memória original com 12 cartas, progresso, retomada, conquista e acompanhamento persistido, sem punição por tentativas.
+- Financeiro ADMIN: receitas/despesas, a pagar/receber, liquidação/conciliacão básica, filtros por competência/vencimento, resumo e fluxo diário por data do pagamento. Precisão decimal e transações.
+- Infraestrutura parcial de assinaturas: modelos/faturas, consulta administrativa e webhook Asaas autenticado/idempotente com reconsulta exclusiva de sandbox. Nenhuma criação de cobrança habilitada.
+- Limite geral API por identidade/IP; solicitações de direitos do titular com decisão administrativa auditada.
+- Migrations V3–V6. Backend e frontend versionados juntos, preservando backend Maven na raiz e frontend em subprojeto.
+- CI nativo sem Docker validou PostgreSQL 16.15, seis migrations, 27 testes de integração/autorização e restauração em banco separado. Consulte validacao.md para versão exata testada.
 
 ## Pendente
 
-- Curvas OMS e escores validados, correção por prematuridade e revisão profissional.
-- Biblioteca licenciada de alimentos/nutrientes, refeições, porções e substituições.
-- Formulários de anamnese e terapia estruturados, histórico por consulta.
-- Financeiro, pagamentos, assinatura SaaS, webhooks e painel comercial.
-- Jogos, gamificação, recompensas, notificações, PWA e aplicativos nativos.
-- Troca/recuperação de senha, convites, revogação de conta e MFA.
-- Consentimento versionado, política de retenção executável, exclusão/portabilidade e revisão de LGPD.
-- Paginação, limites por clínica, armazenamento externo, antimalware e sessão compartilhada.
-- Deploy de produção e revisão independente de segurança.
+OMS 2007/5–19 anos e comparação executada com AnthroPlus; vetores ampliados/revisão clínica; edema por avaliação; prematuridade; catálogo licenciado e receitas persistentes; substituições com equivalência revisada; anamnese/terapia estruturadas; demais jogos/níveis/desafios; financeiro avançado/contas e categorias normalizadas; assinaturas completas/trial/cancelamento/inadimplência; consentimento versionado, retenção executável, portabilidade/exclusão; recuperação/revogação de senha/MFA/antivírus; paginação, limites distribuídos, PWA e revisão independente.
 
-O núcleo é funcional; isso não significa que todos os 33 itens da missão estejam concluídos. Não usar dados clínicos reais antes da validação de banco, revisão de segurança e revisão clínica.
+Referências, APIs e critérios de aceite: validacao-clinica.md, seguranca-lgpd.md, dependencias.md, apis-incrementais.md e auditoria-e-backlog.md.

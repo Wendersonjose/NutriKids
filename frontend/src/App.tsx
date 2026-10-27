@@ -419,9 +419,20 @@ function PatientDetail({ user }: { user: User }) {
         </a>
       </header>
       <ErrorBox error={p.error} />
-      <details><summary>Curvas e evolução OMS</summary><Crescimento id={id!} /></details>
-      {!family && <details><summary>Plano alimentar calculado</summary><PlanoEditor id={id!} /></details>}
-      <details><summary>Jogo e acompanhamento</summary><Memoria id={id!} /></details>
+      <details>
+        <summary>Curvas e evolução OMS</summary>
+        <Crescimento id={id!} />
+      </details>
+      {!family && (
+        <details>
+          <summary>Plano alimentar calculado</summary>
+          <PlanoEditor id={id!} />
+        </details>
+      )}
+      <details>
+        <summary>Jogo e acompanhamento</summary>
+        <Memoria id={id!} />
+      </details>
       <div className="tabs">
         {Object.entries(types)
           .filter(
@@ -985,7 +996,9 @@ export function App() {
               </NavLink>
             </>
           )}
-          {user.perfil === "ADMIN" && <NavLink to="/financeiro">Financeiro</NavLink>}
+          {user.perfil === "ADMIN" && (
+            <NavLink to="/financeiro">Financeiro</NavLink>
+          )}
         </nav>
         <div className="sidebar-note">
           <Leaf size={22} />
@@ -1036,7 +1049,9 @@ export function App() {
               />
             </>
           )}
-          {user.perfil === "ADMIN" && <Route path="/financeiro" element={<Financeiro />} />}
+          {user.perfil === "ADMIN" && (
+            <Route path="/financeiro" element={<Financeiro />} />
+          )}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <footer>Nutri Kids · Apoio ao acompanhamento profissional</footer>
